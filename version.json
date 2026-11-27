@@ -1,0 +1,8 @@
+{
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "tagName": "v1.0.0",
+  "name": "Nox Store v1.0.0",
+  "body": "Initial release of Nox Store: modern Play Store inspired app store with Android 12+ unattended background updates, category browsing, and seamless app installation.",
+  "packageName": "com.nox.store"
+}

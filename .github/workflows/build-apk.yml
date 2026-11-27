@@ -1,0 +1,153 @@
+name: Build and Update Release APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Compute Dynamic Version
+        run: |
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="1.0.${{ github.run_number }}"
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+      - name: Setup & Decode Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          SECRET_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+          SECRET_STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          SECRET_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          mkdir -p app
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding keystore from GitHub Secrets (KEYSTORE_BASE64)..."
+            echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > app/release.jks
+            echo "KEYSTORE_PASSWORD=${SECRET_STORE_PASS:-android}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${SECRET_KEY_ALIAS:-noxstore}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${SECRET_KEY_PASS:-android}" >> $GITHUB_ENV
+          elif [ -f "app/keystore.base64" ] && [ -s "app/keystore.base64" ]; then
+            echo "Decoding keystore from repository file (app/keystore.base64)..."
+            cat app/keystore.base64 | tr -d '\r\n ' | base64 -d > app/release.jks
+            echo "KEYSTORE_PASSWORD=${SECRET_STORE_PASS:-android}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${SECRET_KEY_ALIAS:-noxstore}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${SECRET_KEY_PASS:-android}" >> $GITHUB_ENV
+          else
+            echo "Generating new release keystore for Nox Store..."
+            keytool -genkeypair -v \
+              -keystore app/release.jks \
+              -alias noxstore \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass android \
+              -keypass android \
+              -dname "CN=Nox Store, OU=Mobile, O=Nox Studios, L=Dhaka, ST=Dhaka, C=BD"
+            
+            echo "Encoding keystore to app/keystore.base64..."
+            base64 -w 0 app/release.jks > app/keystore.base64
+            
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add app/keystore.base64
+            git commit -m "chore: persist release keystore base64 [skip ci]" || true
+            git push origin main || true
+            
+            echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=noxstore" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+          fi
+          echo "Keystore verified at app/release.jks ($(wc -c < app/release.jks) bytes)"
+
+      - name: Build Android Release APK
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PversionCode=${{ env.VERSION_CODE }} -PversionName=${{ env.VERSION_NAME }} --no-daemon --stacktrace 2>&1 | tee build_log.txt
+
+      - name: Push Error Log on Failure
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B build-log
+          cp build_log.txt BUILD_ERROR.txt
+          git add -f BUILD_ERROR.txt
+          git commit -m "Auto-capture Gradle build error" || true
+          git push origin build-log -f || true
+
+      - name: Prepare APK for Release
+        run: |
+          mkdir -p release-artifacts
+          echo "=== Searching for generated release APK ==="
+          APK_FILE=$(find app/build/outputs/apk/release -type f -name "*.apk" 2>/dev/null | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find . -type f -name "*.apk" 2>/dev/null | head -n 1)
+          fi
+          echo "Found APK: $APK_FILE"
+          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
+            cp "$APK_FILE" release-artifacts/NoxStore-latest.apk
+            cp "$APK_FILE" "release-artifacts/NoxStore-v${{ env.VERSION_NAME }}.apk"
+            echo "{\"versionCode\": ${{ env.VERSION_CODE }}, \"versionName\": \"${{ env.VERSION_NAME }}\", \"tagName\": \"v${{ env.VERSION_NAME }}\", \"name\": \"Nox Store v${{ env.VERSION_NAME }}\", \"apkUrl\": \"https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION_NAME }}/NoxStore-latest.apk\"}" > release-artifacts/version.json
+            echo "Successfully prepared release artifacts"
+            ls -lh release-artifacts/
+          else
+            echo "::error::No APK file found in workspace after build!"
+            exit 1
+          fi
+
+      - name: Prepare Release Notes
+        run: |
+          echo "## ⚡ Nox Store v${{ env.VERSION_NAME }}" > release_body.md
+          echo "Autonomous App Store for Android with unattended background updates." >> release_body.md
+          echo "" >> release_body.md
+          echo "### 📦 Release Assets" >> release_body.md
+          echo "* **NoxStore-latest.apk**: Universal direct install release build" >> release_body.md
+          echo "* **version.json**: Remote update manifest for Nox Store client" >> release_body.md
+          echo "" >> release_body.md
+          echo "### 📝 Recent Commits" >> release_body.md
+          git log -n 5 --pretty=format:"* %s" >> release_body.md
+          echo "" >> release_body.md
+          echo "" >> release_body.md
+          echo "---" >> release_body.md
+          echo "**Version**: \`v${{ env.VERSION_NAME }}\` (Build #${{ env.VERSION_CODE }})" >> release_body.md
+          echo "**Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> release_body.md
+
+      - name: Publish GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: "v${{ env.VERSION_NAME }}"
+          commit: ${{ github.sha }}
+          name: "Nox Store v${{ env.VERSION_NAME }}"
+          bodyFile: "release_body.md"
+          artifacts: "release-artifacts/*"
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
