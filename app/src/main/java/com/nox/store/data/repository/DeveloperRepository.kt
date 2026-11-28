@@ -4,13 +4,16 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.nox.store.data.model.DeveloperProfile
+import com.nox.store.data.model.DeviceCodeResponse
 import com.nox.store.data.model.GitHubRepoItem
 import com.nox.store.data.model.RepoAppPreview
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -257,6 +260,128 @@ class DeveloperRepository(private val context: Context) {
         }
     }
 
+    fun getClientId(): String {
+        return prefs.getString(KEY_CLIENT_ID, DEFAULT_CLIENT_ID) ?: DEFAULT_CLIENT_ID
+    }
+
+    fun setClientId(clientId: String) {
+        prefs.edit().putString(KEY_CLIENT_ID, clientId.trim()).apply()
+    }
+
+    suspend fun requestDeviceCode(clientId: String = getClientId()): Result<DeviceCodeResponse> = withContext(Dispatchers.IO) {
+        val cleanClientId = clientId.trim()
+        if (cleanClientId.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("GitHub Client ID is required"))
+        }
+
+        val formBody = FormBody.Builder()
+            .add("client_id", cleanClientId)
+            .add("scope", "repo,read:user")
+            .build()
+
+        val request = Request.Builder()
+            .url("https://github.com/login/device/code")
+            .header("Accept", "application/json")
+            .header("User-Agent", "NoxStore/1.0.0")
+            .post(formBody)
+            .build()
+
+        try {
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+            val json = JSONObject(body)
+
+            if (!response.isSuccessful || json.has("error")) {
+                val errorMsg = json.optString("error_description", json.optString("error", "Failed getting device code"))
+                return@withContext Result.failure(Exception(errorMsg))
+            }
+
+            val deviceCode = json.getString("device_code")
+            val userCode = json.getString("user_code")
+            val verificationUri = json.optString("verification_uri", "https://github.com/login/device")
+            val expiresIn = json.optInt("expires_in", 900)
+            val interval = json.optInt("interval", 5)
+
+            Result.success(
+                DeviceCodeResponse(
+                    deviceCode = deviceCode,
+                    userCode = userCode,
+                    verificationUri = verificationUri,
+                    expiresIn = expiresIn,
+                    interval = interval
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Device code request failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun pollForToken(
+        clientId: String = getClientId(),
+        deviceCode: String,
+        intervalSeconds: Int = 5,
+        maxWaitSeconds: Int = 300
+    ): Result<DeveloperProfile> = withContext(Dispatchers.IO) {
+        val cleanClientId = clientId.trim()
+        var interval = intervalSeconds.coerceAtLeast(5)
+        val startTime = System.currentTimeMillis()
+
+        while (System.currentTimeMillis() - startTime < maxWaitSeconds * 1000L) {
+            delay(interval * 1000L)
+
+            val formBody = FormBody.Builder()
+                .add("client_id", cleanClientId)
+                .add("device_code", deviceCode)
+                .add("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
+                .build()
+
+            val request = Request.Builder()
+                .url("https://github.com/login/oauth/access_token")
+                .header("Accept", "application/json")
+                .header("User-Agent", "NoxStore/1.0.0")
+                .post(formBody)
+                .build()
+
+            try {
+                val response = client.newCall(request).execute()
+                val body = response.body?.string() ?: ""
+                val json = JSONObject(body)
+
+                if (json.has("access_token")) {
+                    val token = json.getString("access_token")
+                    return@withContext connectGitHub(token)
+                }
+
+                val error = json.optString("error", "")
+                when (error) {
+                    "authorization_pending" -> {
+                        // User hasn't finished authorizing yet, continue polling
+                    }
+                    "slow_down" -> {
+                        interval = json.optInt("interval", interval + 5)
+                    }
+                    "expired_token" -> {
+                        return@withContext Result.failure(Exception("Verification code expired. Please try again."))
+                    }
+                    "access_denied" -> {
+                        return@withContext Result.failure(Exception("Authorization cancelled by user."))
+                    }
+                    else -> {
+                        if (error.isNotBlank()) {
+                            val desc = json.optString("error_description", error)
+                            return@withContext Result.failure(Exception(desc))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error polling access token", e)
+            }
+        }
+
+        Result.failure(Exception("Authorization timed out. Please try again."))
+    }
+
     fun signOut() {
         prefs.edit().clear().apply()
         _developerProfile.value = null
@@ -264,6 +389,8 @@ class DeveloperRepository(private val context: Context) {
 
     companion object {
         private const val TAG = "DeveloperRepository"
+        const val DEFAULT_CLIENT_ID = ""
+        private const val KEY_CLIENT_ID = "dev_oauth_client_id"
         private const val KEY_USERNAME = "dev_username"
         private const val KEY_DISPLAY_NAME = "dev_display_name"
         private const val KEY_AVATAR_URL = "dev_avatar_url"

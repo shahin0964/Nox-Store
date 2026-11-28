@@ -1,5 +1,7 @@
 package com.nox.store.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,15 +28,20 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Publish
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RocketLaunch
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,6 +49,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +66,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,9 +102,60 @@ fun DeveloperStudioScreen(
     val developerProfile by developerRepository.developerProfile.collectAsState()
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+
     var usernameInput by remember { mutableStateOf("") }
     var isConnecting by remember { mutableStateOf(false) }
     var connectError by remember { mutableStateOf<String?>(null) }
+
+    var deviceCodeResponse by remember { mutableStateOf<com.nox.store.data.model.DeviceCodeResponse?>(null) }
+    var isStartingDeviceFlow by remember { mutableStateOf(false) }
+    var isPollingDeviceFlow by remember { mutableStateOf(false) }
+    var showClientIdDialog by remember { mutableStateOf(false) }
+    var clientIdInput by remember { mutableStateOf(developerRepository.getClientId()) }
+    var deviceFlowError by remember { mutableStateOf<String?>(null) }
+    var codeCopiedToast by remember { mutableStateOf(false) }
+
+    fun triggerDeviceSignIn() {
+        val clientId = developerRepository.getClientId().trim()
+        if (clientId.isBlank()) {
+            showClientIdDialog = true
+            return
+        }
+
+        scope.launch {
+            isStartingDeviceFlow = true
+            deviceFlowError = null
+            connectError = null
+            val res = developerRepository.requestDeviceCode(clientId)
+            isStartingDeviceFlow = false
+
+            res.onSuccess { codeResp ->
+                deviceCodeResponse = codeResp
+                codeCopiedToast = false
+                isPollingDeviceFlow = true
+                scope.launch {
+                    val pollRes = developerRepository.pollForToken(
+                        clientId = clientId,
+                        deviceCode = codeResp.deviceCode,
+                        intervalSeconds = codeResp.interval
+                    )
+                    isPollingDeviceFlow = false
+                    deviceCodeResponse = null
+                    pollRes.onFailure { err ->
+                        deviceFlowError = err.message ?: "Authorization failed"
+                    }
+                }
+            }.onFailure { err ->
+                val msg = err.message ?: "Failed requesting login code"
+                deviceFlowError = msg
+                if (msg.contains("client_id", ignoreCase = true) || msg.contains("not found", ignoreCase = true)) {
+                    showClientIdDialog = true
+                }
+            }
+        }
+    }
 
     var reposList by remember { mutableStateOf<List<GitHubRepoItem>>(emptyList()) }
     var isLoadingRepos by remember { mutableStateOf(false) }
@@ -203,7 +266,11 @@ fun DeveloperStudioScreen(
                                 }
                                 isConnecting = false
                             }
-                        }
+                        },
+                        isStartingDeviceFlow = isStartingDeviceFlow,
+                        deviceFlowError = deviceFlowError,
+                        onDeviceSignInClick = { triggerDeviceSignIn() },
+                        onConfigureClientIdClick = { showClientIdDialog = true }
                     )
                 }
             } else {
@@ -555,6 +622,192 @@ fun DeveloperStudioScreen(
             }
         }
     }
+
+    // GitHub Device Code Authorization Modal Bottom Sheet
+    if (deviceCodeResponse != null) {
+        val codeResp = deviceCodeResponse!!
+        ModalBottomSheet(
+            onDismissRequest = {
+                deviceCodeResponse = null
+                isPollingDeviceFlow = false
+            },
+            containerColor = NoxCard
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "🔑 GitHub Device Verification",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Enter this one-time code on GitHub to authorize Nox Store:",
+                    fontSize = 13.sp,
+                    color = TextMuted
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // The 8-character user code box
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF16182B))
+                        .border(1.5.dp, NoxAccentCyan, RoundedCornerShape(16.dp))
+                        .clickable {
+                            clipboardManager.setText(AnnotatedString(codeResp.userCode))
+                            codeCopiedToast = true
+                        }
+                        .padding(horizontal = 28.dp, vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = codeResp.userCode,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 4.sp,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = if (codeCopiedToast) "✓ Code copied to clipboard!" else "Tap to copy code",
+                    fontSize = 11.sp,
+                    color = if (codeCopiedToast) NoxInstallGreen else TextMuted
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Copy & Open GitHub button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .clip(RoundedCornerShape(25.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(NoxPrimary, NoxAccentCyan)
+                            )
+                        )
+                        .clickable {
+                            clipboardManager.setText(AnnotatedString(codeResp.userCode))
+                            codeCopiedToast = true
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(codeResp.verificationUri))
+                            context.startActivity(intent)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.OpenInBrowser,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Copy & Open GitHub (github.com/login/device)",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Polling spinner
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = NoxAccentCyan
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Waiting for you to authorize in browser...",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // GitHub OAuth App Client ID Dialog
+    if (showClientIdDialog) {
+        AlertDialog(
+            onDismissRequest = { showClientIdDialog = false },
+            title = {
+                Text(
+                    text = "GitHub OAuth Client ID",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Device Code লগইনের জন্য আপনার GitHub OAuth App-এর Client ID দিন:",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    BasicInputBox(
+                        value = clientIdInput,
+                        onValueChange = { clientIdInput = it },
+                        placeholder = "e.g. Ov23liXXXXXXXXXX"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Create at github.com/settings/developers (check 'Enable Device Flow')",
+                        fontSize = 10.sp,
+                        color = NoxAccentCyan,
+                        modifier = Modifier.clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/developers"))
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = clientIdInput.trim()
+                        if (trimmed.isNotBlank()) {
+                            developerRepository.setClientId(trimmed)
+                            showClientIdDialog = false
+                            triggerDeviceSignIn()
+                        }
+                    }
+                ) {
+                    Text("Save & Continue", color = NoxAccentCyan, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClientIdDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            },
+            containerColor = NoxCard
+        )
+    }
 }
 
 @Composable
@@ -563,7 +816,11 @@ fun DeveloperOnboardingCard(
     onUsernameChange: (String) -> Unit,
     isConnecting: Boolean,
     errorMessage: String?,
-    onConnectClick: () -> Unit
+    onConnectClick: () -> Unit,
+    isStartingDeviceFlow: Boolean = false,
+    deviceFlowError: String? = null,
+    onDeviceSignInClick: () -> Unit = {},
+    onConfigureClientIdClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -618,16 +875,90 @@ fun DeveloperOnboardingCard(
                 lineHeight = 18.sp
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Text(
-                text = "GitHub Username or Token",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextMuted
-            )
+            // Primary Action: Sign in with GitHub (Device Code)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(NoxPrimary, NoxAccentCyan)
+                        )
+                    )
+                    .clickable(enabled = !isStartingDeviceFlow) { onDeviceSignInClick() }
+                    .padding(vertical = 14.dp, horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isStartingDeviceFlow) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.Key,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Sign in with GitHub (Device Code)",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "No token needed • Authenticate via code in browser",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
+            }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            if (deviceFlowError != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = deviceFlowError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 11.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Divider: or connect with username
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp)
+                        .background(NoxCardBorder)
+                )
+                Text(
+                    text = "  or connect with username  ",
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp)
+                        .background(NoxCardBorder)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             BasicInputBox(
                 value = usernameInput,
@@ -644,31 +975,58 @@ fun DeveloperOnboardingCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(46.dp)
-                    .clip(RoundedCornerShape(23.dp))
-                    .background(NoxPrimary)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(NoxCard)
+                    .border(1.dp, NoxCardBorder, RoundedCornerShape(22.dp))
                     .clickable(enabled = !isConnecting) { onConnectClick() },
                 contentAlignment = Alignment.Center
             ) {
                 if (isConnecting) {
                     CircularProgressIndicator(
                         color = Color.White,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
-                        text = "Connect GitHub Account",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        text = "Connect Profile Only",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Configure Client ID link at bottom
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onConfigureClientIdClick() }
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = "Config",
+                    tint = TextMuted,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Configure OAuth Client ID",
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
             }
         }
     }

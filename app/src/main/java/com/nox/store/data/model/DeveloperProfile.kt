@@ -39,3 +39,11 @@ data class DeveloperBadgeData(
     val isVerified: Boolean = false,
     val level: String = "Starter" // "Starter", "Pro Dev", "Elite Dev", "Store Founder"
 )
+
+data class DeviceCodeResponse(
+    val deviceCode: String,
+    val userCode: String,
+    val verificationUri: String = "https://github.com/login/device",
+    val expiresIn: Int = 900,
+    val interval: Int = 5
+)
