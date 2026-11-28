@@ -436,15 +436,17 @@ class AppsRepository(private val context: Context) {
             val cleanAppName = app.name.replace(" ", "").replace("-", "").lowercase()
 
             for (pkg in installedPackages) {
+                val appInfo = pkg.applicationInfo ?: continue
                 val pkgName = pkg.packageName.lowercase()
                 val label = try {
-                    pm.getApplicationLabel(pkg.applicationInfo).toString().trim().lowercase()
+                    pm.getApplicationLabel(appInfo).toString().trim().lowercase()
                 } catch (e: Exception) { "" }
 
+                val repoSlug = app.githubRepo?.substringAfter("/")?.replace("-", "")?.replace("_", "")?.lowercase()
                 val isMatch = (label.isNotBlank() && label == app.name.trim().lowercase()) ||
                         (label.isNotBlank() && label == cleanAppName) ||
                         (cleanAppName.length >= 4 && pkgName.contains(cleanAppName)) ||
-                        (app.githubRepo.isNotBlank() && pkgName.contains(app.githubRepo.substringAfter("/").replace("-", "").replace("_", "").lowercase()))
+                        (!repoSlug.isNullOrBlank() && pkgName.contains(repoSlug))
 
                 if (isMatch) {
                     val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

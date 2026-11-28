@@ -206,9 +206,10 @@ class DeveloperRepository(private val context: Context) {
             val simplifiedApp = cleanAppName.replace(" ", "").lowercase()
 
             for (pkg in installed) {
+                val appInfo = pkg.applicationInfo ?: continue
                 val pkgName = pkg.packageName.lowercase()
                 val label = try {
-                    pm.getApplicationLabel(pkg.applicationInfo).toString().trim().lowercase()
+                    pm.getApplicationLabel(appInfo).toString().trim().lowercase()
                 } catch (e: Exception) { "" }
 
                 if (label == cleanAppName.lowercase() || (label.isNotBlank() && label == simplifiedApp) ||
@@ -364,7 +365,6 @@ class DeveloperRepository(private val context: Context) {
                 errorMessage = e.message ?: "Failed inspecting repository"
             )
         }
-    }
     }
 
     fun getClientId(): String {
