@@ -2,7 +2,7 @@
   "storeName": "Nox Store",
   "version": 1,
   "description": "Central GitHub-Powered Open Registry for Nox Store",
-  "lastUpdated": "2026-11-28T04:56:00Z",
+  "lastUpdated": "1795841157195",
   "apps": [
     {
       "id": "nox_store",
@@ -12,14 +12,14 @@
       "category": "Tools",
       "summary": "Autonomous Android App Store with background updates",
       "description": "Nox Store is an open application marketplace featuring automated background updates and direct GitHub releases publishing.",
-      "iconUrl": "https://raw.githubusercontent.com/shahin0964/Nox-Store/main/app/src/main/res/drawable/ic_launcher_foreground.xml",
-      "bannerUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+      "iconUrl": "https:\/\/raw.githubusercontent.com\/shahin0964\/Nox-Store\/main\/app\/src\/main\/res\/drawable\/ic_launcher_foreground.xml",
+      "bannerUrl": "https:\/\/images.unsplash.com\/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
       "screenshots": [],
       "latestVersionCode": 4,
       "latestVersionName": "1.0.4",
-      "downloadUrl": "https://github.com/shahin0964/Nox-Store/releases/download/v1.0.4/NoxStore-latest.apk",
+      "downloadUrl": "https:\/\/github.com\/shahin0964\/Nox-Store\/releases\/download\/v1.0.4\/NoxStore-latest.apk",
       "sizeBytes": 12127122,
-      "githubRepo": "shahin0964/Nox-Store",
+      "githubRepo": "shahin0964\/Nox-Store",
       "changelog": [
         "Autonomous self-updating store architecture",
         "Option A: GitHub-powered central registry",
@@ -31,6 +31,30 @@
       "isSelfApp": true,
       "isDevVerified": true,
       "devBadgeLevel": "Store Founder"
+    },
+    {
+      "id": "com_shahin0964_noxkeyboard",
+      "packageName": "com.shahin0964.noxkeyboard",
+      "name": "Nox Keyboard",
+      "developer": "null",
+      "category": "Tools",
+      "summary": "**Full Changelog**: https:\/\/github.com\/shahin0964\/Nox-Keyboard\/compare\/v1.0.15...v1.0.16",
+      "description": "**Full Changelog**: https:\/\/github.com\/shahin0964\/Nox-Keyboard\/compare\/v1.0.15...v1.0.16",
+      "iconUrl": "https:\/\/raw.githubusercontent.com\/shahin0964\/Nox-Keyboard\/main\/app\/src\/main\/res\/mipmap-xxxhdpi\/ic_launcher.png",
+      "bannerUrl": "",
+      "screenshots": [],
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0.16",
+      "downloadUrl": "https:\/\/github.com\/shahin0964\/Nox-Keyboard\/releases\/download\/v1.0.16\/app-release.apk",
+      "sizeBytes": 53686098,
+      "githubRepo": "shahin0964\/Nox-Keyboard",
+      "changelog": [
+        "Published via Nox Developer Studio"
+      ],
+      "minSdk": 26,
+      "targetSdk": 35,
+      "isFeatured": false,
+      "isSelfApp": false
     }
   ]
 }
