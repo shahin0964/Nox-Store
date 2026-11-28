@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Base64
 import android.util.Log
+import com.nox.store.NoxStoreApp
 import com.nox.store.data.model.AppItem
+import com.nox.store.data.model.StoreNotice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +81,7 @@ class AppsRepository(private val context: Context) {
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val bodyString = response.body?.string() ?: ""
+                        parseRemoteNoticeIfPresent(bodyString)
                         val parsed = parseAppsJson(bodyString)
                         if (parsed.isNotEmpty()) {
                             mergeAndSyncCatalog(parsed)
@@ -171,6 +174,10 @@ class AppsRepository(private val context: Context) {
                     put("packageName", app.packageName)
                     put("name", app.name)
                     put("developer", app.developer)
+                    put("developerEmail", app.developerEmail)
+                    put("developerWebsite", app.developerWebsite)
+                    put("developerLocation", app.developerLocation)
+                    put("developerBio", app.developerBio)
                     put("category", app.category)
                     put("summary", app.summary)
                     put("description", app.description)
@@ -248,6 +255,10 @@ class AppsRepository(private val context: Context) {
                     put("packageName", app.packageName)
                     put("name", app.name)
                     put("developer", app.developer)
+                    put("developerEmail", app.developerEmail)
+                    put("developerWebsite", app.developerWebsite)
+                    put("developerLocation", app.developerLocation)
+                    put("developerBio", app.developerBio)
                     put("category", app.category)
                     put("summary", app.summary)
                     put("description", app.description)
@@ -280,35 +291,69 @@ class AppsRepository(private val context: Context) {
      */
     fun syncAllFromGitHub() {
         scope.launch {
-            _isRefreshing.value = true
-            try {
-                val currentList = _apps.value.toMutableList()
-
-                for (i in currentList.indices) {
-                    val app = currentList[i]
-                    val repo = app.githubRepo ?: continue
-                    try {
-                        val updatedApp = fetchRepoDetailsFromGitHub(repo, app)
-                        currentList[i] = detectInstalledVersion(updatedApp)
-                        _apps.value = currentList.toList()
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error syncing $repo: ${e.message}")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed syncing from GitHub", e)
-            } finally {
-                _isRefreshing.value = false
-            }
+            syncAllFromGitHubSync()
         }
+    }
+
+    suspend fun syncAllFromGitHubSync() {
+        _isRefreshing.value = true
+        try {
+            val currentList = _apps.value.toMutableList()
+
+            for (i in currentList.indices) {
+                val app = currentList[i]
+                val repo = app.githubRepo ?: continue
+                try {
+                    val updatedApp = fetchRepoDetailsFromGitHub(repo, app)
+                    currentList[i] = detectInstalledVersion(updatedApp)
+                    _apps.value = currentList.toList()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error syncing $repo: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed syncing from GitHub", e)
+        } finally {
+            _isRefreshing.value = false
+        }
+    }
+
+    private fun cleanOpt(obj: JSONObject, key: String, fallback: String = ""): String {
+        if (!obj.has(key) || obj.isNull(key)) return fallback
+        val v = obj.optString(key, fallback).trim()
+        return if (v.equals("null", ignoreCase = true) || v.isBlank()) fallback else v
+    }
+
+    private fun parseRemoteNoticeIfPresent(jsonString: String) {
+        try {
+            val root = JSONObject(jsonString)
+            if (!root.has("storeNotice")) return
+            if (root.isNull("storeNotice")) {
+                NoxStoreApp.instance.adminRepository.syncRemoteNotice(null)
+                return
+            }
+            val noticeObj = root.optJSONObject("storeNotice") ?: return
+            val message = cleanOpt(noticeObj, "message", "")
+            if (message.isNotBlank()) {
+                val notice = StoreNotice(
+                    title = cleanOpt(noticeObj, "title", "STORE ANNOUNCEMENT"),
+                    message = message,
+                    type = cleanOpt(noticeObj, "type", "INFO")
+                )
+                NoxStoreApp.instance.adminRepository.syncRemoteNotice(notice)
+            } else {
+                NoxStoreApp.instance.adminRepository.syncRemoteNotice(null)
+            }
+        } catch (_: Exception) {}
     }
 
     private suspend fun fetchRepoDetailsFromGitHub(repo: String, baseApp: AppItem): AppItem = withContext(Dispatchers.IO) {
         var realStars = baseApp.realStars
         var description = baseApp.description
         var summary = baseApp.summary
+        var defaultBranch = "main"
 
-        // 1. Fetch Repository Info (Stars, Repo Description)
+        // 1. Fetch Repository Info (Stars, Repo Description, Default Branch)
         try {
             val repoReq = Request.Builder()
                 .url("https://api.github.com/repos/$repo")
@@ -320,7 +365,8 @@ class AppsRepository(private val context: Context) {
                     val body = response.body?.string() ?: ""
                     val json = JSONObject(body)
                     realStars = json.optInt("stargazers_count", 0)
-                    val desc = json.optString("description", "")
+                    defaultBranch = cleanOpt(json, "default_branch", "main")
+                    val desc = cleanOpt(json, "description", "")
                     if (desc.isNotBlank()) {
                         description = desc
                         summary = desc
@@ -348,7 +394,7 @@ class AppsRepository(private val context: Context) {
                     val body = response.body?.string() ?: ""
                     val json = JSONObject(body)
 
-                    val tagName = json.optString("tag_name", "").removePrefix("v")
+                    val tagName = cleanOpt(json, "tag_name", "").removePrefix("v")
                     if (tagName.isNotBlank()) {
                         latestVersionName = tagName
                         val parts = tagName.split(".")
@@ -358,7 +404,7 @@ class AppsRepository(private val context: Context) {
                         }
                     }
 
-                    val releaseBody = json.optString("body", "")
+                    val releaseBody = cleanOpt(json, "body", "")
                     if (releaseBody.isNotBlank()) {
                         changelog.clear()
                         releaseBody.lines().forEach { line ->
@@ -389,7 +435,23 @@ class AppsRepository(private val context: Context) {
             }
         } catch (_: Exception) {}
 
+        // 3. Extract Play Store-style screenshots from README.md if not already provided
+        val resolvedScreenshots = if (baseApp.screenshots.isNotEmpty()) {
+            baseApp.screenshots
+        } else {
+            DeveloperRepository.fetchScreenshotsFromReadme(client, repo, defaultBranch)
+        }
+
+        // 4. Resolve real package name from repo build.gradle if catalog has a placeholder package
+        val ownerPrefix = "com.${repo.substringBefore("/").lowercase()}."
+        val resolvedPkg = if (baseApp.packageName.startsWith(ownerPrefix)) {
+            DeveloperRepository.fetchPackageNameFromRepo(client, repo, defaultBranch) ?: baseApp.packageName
+        } else {
+            baseApp.packageName
+        }
+
         return@withContext baseApp.copy(
+            packageName = resolvedPkg,
             latestVersionCode = latestVersionCode,
             latestVersionName = latestVersionName,
             downloadUrl = downloadUrl,
@@ -398,6 +460,7 @@ class AppsRepository(private val context: Context) {
             realDownloads = realDownloads,
             description = description,
             summary = summary,
+            screenshots = resolvedScreenshots,
             changelog = if (changelog.isNotEmpty()) changelog else baseApp.changelog
         )
     }
@@ -496,10 +559,13 @@ class AppsRepository(private val context: Context) {
                     }
                 }
 
-                val devName = obj.optString("developer", "Nox Community Developer")
+                val ghRepo = cleanOpt(obj, "githubRepo", "").ifBlank { null }
+                val ghOwner = ghRepo?.substringBefore("/") ?: ""
+                val rawDev = cleanOpt(obj, "developer", "")
+                val devName = rawDev.ifBlank { ghOwner.ifBlank { "Nox Developer" } }
                 val isSelf = obj.optBoolean("isSelfApp", false)
                 val adminRepo = AdminRepository(context)
-                val badge = adminRepo.getDeveloperBadge(devName)
+                val badge = adminRepo.getDeveloperBadge(ghOwner.ifBlank { devName })
 
                 list.add(
                     AppItem(
@@ -507,27 +573,31 @@ class AppsRepository(private val context: Context) {
                         packageName = obj.getString("packageName"),
                         name = obj.getString("name"),
                         developer = devName,
-                        category = obj.optString("category", "Tools"),
-                        summary = obj.optString("summary", ""),
-                        description = obj.optString("description", ""),
-                        iconUrl = obj.optString("iconUrl", ""),
-                        bannerUrl = obj.optString("bannerUrl", ""),
+                        developerEmail = cleanOpt(obj, "developerEmail", ""),
+                        developerWebsite = cleanOpt(obj, "developerWebsite", ""),
+                        developerLocation = cleanOpt(obj, "developerLocation", ""),
+                        developerBio = cleanOpt(obj, "developerBio", ""),
+                        category = cleanOpt(obj, "category", "Tools"),
+                        summary = cleanOpt(obj, "summary", ""),
+                        description = cleanOpt(obj, "description", ""),
+                        iconUrl = cleanOpt(obj, "iconUrl", ""),
+                        bannerUrl = cleanOpt(obj, "bannerUrl", ""),
                         screenshots = screenshotsList,
                         latestVersionCode = obj.optInt("latestVersionCode", 1),
-                        latestVersionName = obj.optString("latestVersionName", "1.0.0"),
+                        latestVersionName = cleanOpt(obj, "latestVersionName", "1.0.0"),
                         downloadUrl = obj.getString("downloadUrl"),
                         sizeBytes = obj.optLong("sizeBytes", 0L),
                         realStars = obj.optInt("realStars", 0),
                         realDownloads = obj.optLong("realDownloads", 0L),
-                        githubRepo = obj.optString("githubRepo", null),
+                        githubRepo = ghRepo,
                         changelog = changelogList,
                         minSdk = obj.optInt("minSdk", 26),
                         targetSdk = obj.optInt("targetSdk", 35),
                         isFeatured = obj.optBoolean("isFeatured", false),
                         isSelfApp = isSelf,
                         isDevVerified = obj.optBoolean("isDevVerified", isSelf || badge.isVerified),
-                        devBadgeLevel = obj.optString("devBadgeLevel", if (isSelf) "Store Founder" else badge.level),
-                        releaseDate = obj.optString("releaseDate", "Recent")
+                        devBadgeLevel = cleanOpt(obj, "devBadgeLevel", if (isSelf) "Store Founder" else badge.level),
+                        releaseDate = cleanOpt(obj, "releaseDate", "Recent")
                     )
                 )
             }

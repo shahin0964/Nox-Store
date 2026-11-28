@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import com.nox.store.ui.screens.MainScaffold
 import com.nox.store.ui.theme.NoxStoreTheme
@@ -37,7 +39,11 @@ class MainActivity : ComponentActivity() {
         val app = NoxStoreApp.instance
 
         setContent {
-            NoxStoreTheme(darkTheme = true) {
+            val settings by app.settingsRepository.settings.collectAsState()
+            NoxStoreTheme(
+                themeMode = settings.themeMode,
+                dynamicColor = settings.dynamicColors
+            ) {
                 MainScaffold(
                     appsRepository = app.appsRepository,
                     downloadManager = app.downloadManager,

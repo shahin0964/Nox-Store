@@ -54,13 +54,20 @@ class DeveloperRepository(private val context: Context) {
         val badge = adminRepo.getDeveloperBadge(username)
         val displayName = cleanString(prefs.getString(KEY_DISPLAY_NAME, username), username)
         val studioName = cleanString(prefs.getString(KEY_STUDIO_NAME, ""))
+        val email = cleanString(prefs.getString(KEY_DEV_EMAIL, ""))
+        val website = cleanString(prefs.getString(KEY_DEV_WEBSITE, ""))
+        val location = cleanString(prefs.getString(KEY_DEV_LOCATION, ""))
+        val bio = cleanString(prefs.getString(KEY_BIO, ""))
 
         return DeveloperProfile(
             username = username,
             displayName = if (displayName.isNotBlank()) displayName else username,
             studioName = studioName,
+            email = email,
+            website = website,
+            location = location,
             avatarUrl = cleanString(prefs.getString(KEY_AVATAR_URL, "")),
-            bio = cleanString(prefs.getString(KEY_BIO, "")),
+            bio = bio,
             publicRepos = prefs.getInt(KEY_REPOS_COUNT, 0),
             token = prefs.getString(KEY_TOKEN, null),
             isVerified = badge.isVerified,
@@ -74,8 +81,24 @@ class DeveloperRepository(private val context: Context) {
     }
 
     fun setStudioName(name: String) {
-        val clean = name.trim()
-        prefs.edit().putString(KEY_STUDIO_NAME, clean).apply()
+        prefs.edit().putString(KEY_STUDIO_NAME, name.trim()).apply()
+        refreshProfile()
+    }
+
+    fun saveDeveloperInfo(
+        studioName: String,
+        bio: String,
+        email: String,
+        website: String,
+        location: String
+    ) {
+        prefs.edit()
+            .putString(KEY_STUDIO_NAME, studioName.trim())
+            .putString(KEY_BIO, bio.trim())
+            .putString(KEY_DEV_EMAIL, email.trim())
+            .putString(KEY_DEV_WEBSITE, website.trim())
+            .putString(KEY_DEV_LOCATION, location.trim())
+            .apply()
         refreshProfile()
     }
 
@@ -113,8 +136,21 @@ class DeveloperRepository(private val context: Context) {
             val rawName = cleanOptString(json, "name", "")
             val displayName = if (rawName.isNotBlank()) rawName else username
             val avatarUrl = cleanOptString(json, "avatar_url", "")
-            val bio = cleanOptString(json, "bio", "")
+            val githubBio = cleanOptString(json, "bio", "")
+            val githubEmail = cleanOptString(json, "email", "")
+            val githubBlog = cleanOptString(json, "blog", "")
+            val githubLocation = cleanOptString(json, "location", "")
             val publicRepos = json.optInt("public_repos", 0)
+
+            val savedBio = cleanString(prefs.getString(KEY_BIO, ""))
+            val savedEmail = cleanString(prefs.getString(KEY_DEV_EMAIL, ""))
+            val savedWebsite = cleanString(prefs.getString(KEY_DEV_WEBSITE, ""))
+            val savedLocation = cleanString(prefs.getString(KEY_DEV_LOCATION, ""))
+
+            val effectiveBio = savedBio.ifBlank { githubBio }
+            val effectiveEmail = savedEmail.ifBlank { githubEmail }
+            val effectiveWebsite = savedWebsite.ifBlank { githubBlog }
+            val effectiveLocation = savedLocation.ifBlank { githubLocation }
 
             val adminRepo = AdminRepository(context)
             val isOwner = adminRepo.isOwner(username)
@@ -125,8 +161,11 @@ class DeveloperRepository(private val context: Context) {
                 username = username,
                 displayName = displayName,
                 studioName = studioName,
+                email = effectiveEmail,
+                website = effectiveWebsite,
+                location = effectiveLocation,
                 avatarUrl = avatarUrl,
-                bio = bio,
+                bio = effectiveBio,
                 publicRepos = publicRepos,
                 token = if (isToken) trimmed else null,
                 isVerified = badge.isVerified,
@@ -140,6 +179,9 @@ class DeveloperRepository(private val context: Context) {
                 .putString(KEY_DISPLAY_NAME, profile.displayName)
                 .putString(KEY_AVATAR_URL, profile.avatarUrl)
                 .putString(KEY_BIO, profile.bio)
+                .putString(KEY_DEV_EMAIL, profile.email)
+                .putString(KEY_DEV_WEBSITE, profile.website)
+                .putString(KEY_DEV_LOCATION, profile.location)
                 .putInt(KEY_REPOS_COUNT, profile.publicRepos)
                 .putString(KEY_TOKEN, profile.token)
                 .apply()
@@ -223,52 +265,6 @@ class DeveloperRepository(private val context: Context) {
         }
     }
 
-    private suspend fun fetchPackageNameFromRepo(repoFullName: String, defaultBranch: String): String? = withContext(Dispatchers.IO) {
-        val paths = listOf(
-            "app/build.gradle.kts",
-            "app/build.gradle",
-            "build.gradle.kts",
-            "build.gradle",
-            "app/src/main/AndroidManifest.xml"
-        )
-        val branches = listOf(defaultBranch, "main", "master").distinct()
-
-        for (branch in branches) {
-            for (path in paths) {
-                try {
-                    val url = "https://raw.githubusercontent.com/$repoFullName/$branch/$path"
-                    val req = Request.Builder().url(url).header("User-Agent", "NoxStore/1.0.0").build()
-                    val res = client.newCall(req).execute()
-                    if (res.isSuccessful) {
-                        val content = res.body?.string() ?: ""
-                        if (path.endsWith("AndroidManifest.xml")) {
-                            val pkgRegex = Regex("""package\s*=\s*["']([^"']+)["']""")
-                            val match = pkgRegex.find(content)
-                            if (match != null && match.groupValues[1].isNotBlank()) {
-                                return@withContext match.groupValues[1]
-                            }
-                        } else {
-                            val appIdRegex = Regex("""applicationId\s*=?\s*["']([^"']+)["']""")
-                            val appIdMatch = appIdRegex.find(content)
-                            if (appIdMatch != null && appIdMatch.groupValues[1].isNotBlank()) {
-                                return@withContext appIdMatch.groupValues[1]
-                            }
-
-                            val nsRegex = Regex("""namespace\s*=?\s*["']([^"']+)["']""")
-                            val nsMatch = nsRegex.find(content)
-                            if (nsMatch != null && nsMatch.groupValues[1].isNotBlank()) {
-                                return@withContext nsMatch.groupValues[1]
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    // try next
-                }
-            }
-        }
-        null
-    }
-
     suspend fun inspectRepoForApp(repoFullName: String): RepoAppPreview = withContext(Dispatchers.IO) {
         val repoParts = repoFullName.split("/")
         val repoName = repoParts.lastOrNull() ?: repoFullName
@@ -276,8 +272,10 @@ class DeveloperRepository(private val context: Context) {
             .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
 
         val detectedPkg = findLocalInstalledPackage(repoName, cleanName)
-            ?: fetchPackageNameFromRepo(repoFullName, "main")
+            ?: fetchPackageNameFromRepo(client, repoFullName, "main")
             ?: "com.${repoParts.firstOrNull()?.lowercase() ?: "app"}.${repoName.lowercase().replace("-", "").replace("_", "")}"
+
+        val screenshots = fetchScreenshotsFromReadme(client, repoFullName, "main")
 
         val profile = _developerProfile.value
         val requestBuilder = Request.Builder()
@@ -301,6 +299,7 @@ class DeveloperRepository(private val context: Context) {
                     apkUrl = "",
                     apkSize = 0L,
                     hasValidApk = false,
+                    screenshots = screenshots,
                     errorMessage = "No GitHub Release found! Please create a Release with a .apk file on GitHub."
                 )
             }
@@ -335,6 +334,7 @@ class DeveloperRepository(private val context: Context) {
                     apkUrl = "",
                     apkSize = 0L,
                     hasValidApk = false,
+                    screenshots = screenshots,
                     errorMessage = "Latest release has no .apk asset. Make sure to attach your signed APK to the release."
                 )
             }
@@ -349,6 +349,7 @@ class DeveloperRepository(private val context: Context) {
                 apkUrl = apkUrl,
                 apkSize = apkSize,
                 hasValidApk = true,
+                screenshots = screenshots,
                 errorMessage = null
             )
         } catch (e: Exception) {
@@ -362,6 +363,7 @@ class DeveloperRepository(private val context: Context) {
                 apkUrl = "",
                 apkSize = 0L,
                 hasValidApk = false,
+                screenshots = screenshots,
                 errorMessage = e.message ?: "Failed inspecting repository"
             )
         }
@@ -501,9 +503,125 @@ class DeveloperRepository(private val context: Context) {
         private const val KEY_USERNAME = "dev_username"
         private const val KEY_DISPLAY_NAME = "dev_display_name"
         private const val KEY_STUDIO_NAME = "dev_studio_name"
+        private const val KEY_DEV_EMAIL = "dev_email"
+        private const val KEY_DEV_WEBSITE = "dev_website"
+        private const val KEY_DEV_LOCATION = "dev_location"
         private const val KEY_AVATAR_URL = "dev_avatar_url"
         private const val KEY_BIO = "dev_bio"
         private const val KEY_REPOS_COUNT = "dev_repos_count"
         private const val KEY_TOKEN = "dev_token"
+
+        fun fetchPackageNameFromRepo(client: OkHttpClient, repoFullName: String, defaultBranch: String = "main"): String? {
+            val paths = listOf(
+                "app/build.gradle.kts",
+                "app/build.gradle",
+                "build.gradle.kts",
+                "build.gradle",
+                "app/src/main/AndroidManifest.xml"
+            )
+            val branches = listOf(defaultBranch, "main", "master").distinct()
+
+            for (branch in branches) {
+                for (path in paths) {
+                    try {
+                        val url = "https://raw.githubusercontent.com/$repoFullName/$branch/$path"
+                        val req = Request.Builder().url(url).header("User-Agent", "NoxStore/1.0.0").build()
+                        client.newCall(req).execute().use { res ->
+                            if (res.isSuccessful) {
+                                val content = res.body?.string() ?: ""
+                                if (path.endsWith("AndroidManifest.xml")) {
+                                    val pkgRegex = Regex("""package\s*=\s*["']([^"']+)["']""")
+                                    val match = pkgRegex.find(content)
+                                    if (match != null && match.groupValues[1].isNotBlank()) {
+                                        return match.groupValues[1]
+                                    }
+                                } else {
+                                    val appIdRegex = Regex("""applicationId\s*=?\s*["']([^"']+)["']""")
+                                    val appIdMatch = appIdRegex.find(content)
+                                    if (appIdMatch != null && appIdMatch.groupValues[1].isNotBlank()) {
+                                        return appIdMatch.groupValues[1]
+                                    }
+
+                                    val nsRegex = Regex("""namespace\s*=?\s*["']([^"']+)["']""")
+                                    val nsMatch = nsRegex.find(content)
+                                    if (nsMatch != null && nsMatch.groupValues[1].isNotBlank()) {
+                                        return nsMatch.groupValues[1]
+                                    }
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+            return null
+        }
+
+        fun fetchScreenshotsFromReadme(client: OkHttpClient, repoFullName: String, defaultBranch: String = "main"): List<String> {
+            val branches = listOf(defaultBranch, "main", "master").distinct()
+            val readmeFiles = listOf("README.md", "readme.md")
+            var readmeContent: String? = null
+            var resolvedBranch = defaultBranch
+
+            for (branch in branches) {
+                for (file in readmeFiles) {
+                    try {
+                        val url = "https://raw.githubusercontent.com/$repoFullName/$branch/$file"
+                        val req = Request.Builder().url(url).header("User-Agent", "NoxStore/1.0.0").build()
+                        client.newCall(req).execute().use { res ->
+                            if (res.isSuccessful) {
+                                val text = res.body?.string()
+                                if (!text.isNullOrBlank()) {
+                                    readmeContent = text
+                                    resolvedBranch = branch
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+                    if (readmeContent != null) break
+                }
+                if (readmeContent != null) break
+            }
+
+            val content = readmeContent ?: return emptyList()
+            val urls = LinkedHashSet<String>()
+
+            // 1. Markdown images: ![alt](url)
+            val mdRegex = Regex("""!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+            mdRegex.findAll(content).forEach { match ->
+                urls.add(match.groupValues[1].trim())
+            }
+
+            // 2. HTML <img src="..."> tags
+            val htmlRegex = Regex("""<img[^>]+src\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+            htmlRegex.findAll(content).forEach { match ->
+                urls.add(match.groupValues[1].trim())
+            }
+
+            val ignoreTokens = listOf(
+                "shields.io", "badge", "travis-ci", "codecov", "actions/workflows",
+                "komarev", "hits.seeyoufarm", "star-history", "buymeacoffee", "ko-fi",
+                "paypal", "sponsor", "patreon", "favicon", "ic_launcher",
+                "visitor-badge", "coveralls"
+            )
+
+            return urls.mapNotNull { rawUrl ->
+                val clean = rawUrl.removeSurrounding("<", ">").trim()
+                if (clean.isBlank()) return@mapNotNull null
+                val lower = clean.lowercase()
+                if (lower.endsWith(".svg") || ignoreTokens.any { lower.contains(it) }) {
+                    return@mapNotNull null
+                }
+                if (clean.startsWith("http://") || clean.startsWith("https://")) {
+                    if (clean.contains("github.com/") && clean.contains("/blob/")) {
+                        clean.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
+                    } else {
+                        clean
+                    }
+                } else {
+                    val relativePath = clean.removePrefix("./").removePrefix("/")
+                    "https://raw.githubusercontent.com/$repoFullName/$resolvedBranch/$relativePath"
+                }
+            }.distinct().take(10)
+        }
     }
 }

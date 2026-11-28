@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
 import java.io.File
@@ -15,6 +16,30 @@ import java.io.OutputStream
 
 object InstallerManager {
     private const val TAG = "InstallerManager"
+
+    fun canInstallPackages(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.packageManager.canRequestPackageInstalls()
+        } else {
+            true
+        }
+    }
+
+    fun openInstallPermissionSettings(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${context.packageName}")
+                ).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed opening unknown sources settings", e)
+            }
+        }
+    }
 
     fun installApk(
         context: Context,
@@ -27,9 +52,31 @@ object InstallerManager {
             return false
         }
 
+        if (!canInstallPackages(context)) {
+            Log.w(TAG, "Install unknown apps permission not granted; opening settings")
+            openInstallPermissionSettings(context)
+            return false
+        }
+
+        // Extract the exact package name from inside the downloaded APK to avoid SessionParams mismatch
+        val archivePackageName = try {
+            context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)?.packageName
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not inspect APK archive info", e)
+            null
+        }
+        val realPackageName = archivePackageName?.takeIf { it.isNotBlank() } ?: packageName
+        Log.d(TAG, "Installing APK for $realPackageName (stateKey=$packageName, size=${apkFile.length()})")
+
         return try {
-            if (unattended && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                installViaPackageInstaller(context, apkFile, packageName)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                installViaPackageInstaller(
+                    context = context,
+                    apkFile = apkFile,
+                    realPackageName = realPackageName,
+                    stateKey = packageName,
+                    unattended = unattended
+                )
             } else {
                 installViaSystemIntent(context, apkFile)
             }
@@ -40,26 +87,36 @@ object InstallerManager {
     }
 
     /**
-     * Android 12+ (API 31+) Unattended / Silent Background Installation
-     * Uses PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+     * Android 12+ / 14+ / 15 Native Store Installation & Unattended Updates
+     * Configures PACKAGE_SOURCE_STORE, USER_ACTION_NOT_REQUIRED, and Update Ownership.
      */
     private fun installViaPackageInstaller(
         context: Context,
         apkFile: File,
-        packageName: String
+        realPackageName: String,
+        stateKey: String,
+        unattended: Boolean
     ): Boolean {
         val packageInstaller = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(packageName)
+            setAppPackageName(realPackageName)
             setSize(apkFile.length())
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Allows silent update without user confirmation dialog for apps installed by Nox Store
-                setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+                setRequireUserAction(
+                    if (unattended) {
+                        PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+                    } else {
+                        PackageInstaller.SessionParams.USER_ACTION_REQUIRED
+                    }
+                )
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // Android 14+ ownership protection
                 setRequestUpdateOwnership(true)
             }
         }
@@ -72,7 +129,7 @@ object InstallerManager {
 
         try {
             inputStream = FileInputStream(apkFile)
-            outputStream = session.openWrite("package_$packageName", 0, apkFile.length())
+            outputStream = session.openWrite("package_$realPackageName", 0, apkFile.length())
 
             val buffer = ByteArray(65536)
             var bytesRead: Int
@@ -87,7 +144,8 @@ object InstallerManager {
 
             val intent = Intent(context, InstallStatusReceiver::class.java).apply {
                 action = InstallStatusReceiver.ACTION_INSTALL_STATUS
-                putExtra(InstallStatusReceiver.EXTRA_PACKAGE_NAME, packageName)
+                putExtra(InstallStatusReceiver.EXTRA_PACKAGE_NAME, realPackageName)
+                putExtra(InstallStatusReceiver.EXTRA_STATE_KEY, stateKey)
             }
 
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -105,7 +163,7 @@ object InstallerManager {
 
             session.commit(pendingIntent.intentSender)
             session.close()
-            Log.i(TAG, "Committed PackageInstaller session $sessionId for $packageName")
+            Log.i(TAG, "Committed PackageInstaller session $sessionId for $realPackageName")
             return true
         } catch (e: Exception) {
             session.abandon()

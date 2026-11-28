@@ -1,6 +1,8 @@
 package com.nox.store.ui.screens
 
 import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,12 +21,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,26 +41,28 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
 import com.nox.store.ui.components.AppIcon
-import com.nox.store.ui.theme.NoxAccentCyan
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxCardBorder
 import com.nox.store.ui.theme.NoxInstallGreen
-import com.nox.store.ui.theme.NoxPrimary
 import com.nox.store.ui.theme.NoxUpdateBlue
-import com.nox.store.ui.theme.TextMuted
 
 @Composable
 fun AppDetailScreen(
@@ -65,11 +74,14 @@ fun AppDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+    var selectedScreenshotUrl by remember { mutableStateOf<String?>(null) }
+    var supportExpanded by remember { mutableStateOf(true) }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(colorScheme.background),
         contentPadding = PaddingValues(bottom = 60.dp)
     ) {
         // Top App Bar
@@ -85,7 +97,7 @@ fun AppDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = colorScheme.onSurface
                     )
                 }
 
@@ -101,7 +113,7 @@ fun AppDetailScreen(
                     Icon(
                         imageVector = Icons.Rounded.Share,
                         contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = colorScheme.onSurface
                     )
                 }
             }
@@ -118,7 +130,7 @@ fun AppDetailScreen(
                 AppIcon(
                     iconUrl = app.iconUrl,
                     appName = app.name,
-                    sizeDp = 80,
+                    sizeDp = 76,
                     packageName = app.packageName
                 )
 
@@ -129,7 +141,7 @@ fun AppDetailScreen(
                         text = app.name,
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colorScheme.onSurface
                         )
                     )
 
@@ -143,13 +155,13 @@ fun AppDetailScreen(
                             text = app.developer,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            color = NoxAccentCyan
+                            color = colorScheme.secondary
                         )
                         if (app.isDevVerified || app.isSelfApp) {
                             Icon(
                                 imageVector = Icons.Rounded.Verified,
                                 contentDescription = "Verified Developer",
-                                tint = if (app.isSelfApp) Color(0xFFFFB300) else NoxAccentCyan,
+                                tint = if (app.isSelfApp) Color(0xFFFFB300) else colorScheme.secondary,
                                 modifier = Modifier.size(14.dp)
                             )
                             Box(
@@ -157,7 +169,7 @@ fun AppDetailScreen(
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(
                                         if (app.isSelfApp) Color(0xFFFFB300).copy(alpha = 0.2f)
-                                        else NoxAccentCyan.copy(alpha = 0.15f)
+                                        else colorScheme.secondary.copy(alpha = 0.15f)
                                     )
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
@@ -165,7 +177,7 @@ fun AppDetailScreen(
                                     text = if (app.isSelfApp) "Store Founder" else app.devBadgeLevel,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (app.isSelfApp) Color(0xFFFFB300) else NoxAccentCyan
+                                    color = if (app.isSelfApp) Color(0xFFFFB300) else colorScheme.secondary
                                 )
                             }
                         }
@@ -177,13 +189,14 @@ fun AppDetailScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(NoxCard)
+                                .background(colorScheme.surfaceVariant)
+                                .border(1.dp, colorScheme.outline, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
                                 text = app.category,
                                 fontSize = 11.sp,
-                                color = TextMuted
+                                color = colorScheme.onSurfaceVariant
                             )
                         }
 
@@ -191,14 +204,14 @@ fun AppDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(NoxPrimary.copy(alpha = 0.25f))
+                                    .background(colorScheme.primary.copy(alpha = 0.2f))
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Text(
                                     text = "SELF-UPDATE ACTIVE",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = NoxAccentCyan
+                                    color = colorScheme.secondary
                                 )
                             }
                         }
@@ -216,27 +229,26 @@ fun AppDetailScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Real Stars
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = app.formattedRating,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = if (app.realStars > 0) Color(0xFFFFB300) else TextMuted,
+                            tint = if (app.realStars > 0) Color(0xFFFFB300) else colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
                         )
                     }
                     Text(
                         text = if (app.realStars > 0) "${app.realStars} GitHub Stars" else "Community App",
                         fontSize = 11.sp,
-                        color = TextMuted
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -244,21 +256,20 @@ fun AppDetailScreen(
                     modifier = Modifier
                         .width(1.dp)
                         .height(28.dp)
-                        .background(NoxCardBorder)
+                        .background(colorScheme.outline)
                 )
 
-                // Download Size
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = app.formattedSize,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
                     Text(
                         text = "Download Size",
                         fontSize = 11.sp,
-                        color = TextMuted
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -266,21 +277,20 @@ fun AppDetailScreen(
                     modifier = Modifier
                         .width(1.dp)
                         .height(28.dp)
-                        .background(NoxCardBorder)
+                        .background(colorScheme.outline)
                 )
 
-                // Real Downloads
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = app.formattedDownloads,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
                     Text(
                         text = "Total Downloads",
                         fontSize = 11.sp,
-                        color = TextMuted
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -299,8 +309,8 @@ fun AppDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(NoxCard)
-                                .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                                .background(colorScheme.surfaceVariant)
+                                .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
                                 .padding(16.dp)
                         ) {
                             Row(
@@ -312,7 +322,7 @@ fun AppDetailScreen(
                                     text = "Downloading ${downloadState.progressPercent}%",
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = colorScheme.onSurface
                                 )
 
                                 IconButton(
@@ -322,7 +332,7 @@ fun AppDetailScreen(
                                     Icon(
                                         imageVector = Icons.Rounded.Close,
                                         contentDescription = "Cancel",
-                                        tint = TextMuted
+                                        tint = colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -335,8 +345,8 @@ fun AppDetailScreen(
                                     .fillMaxWidth()
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(4.dp)),
-                                color = NoxAccentCyan,
-                                trackColor = NoxCardBorder
+                                color = colorScheme.secondary,
+                                trackColor = colorScheme.outline
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -348,13 +358,13 @@ fun AppDetailScreen(
                                 Text(
                                     text = downloadState.formattedProgress,
                                     fontSize = 11.sp,
-                                    color = TextMuted
+                                    color = colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = downloadState.formattedSpeed,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = NoxAccentCyan
+                                    color = colorScheme.secondary
                                 )
                             }
                         }
@@ -366,7 +376,7 @@ fun AppDetailScreen(
                                 .fillMaxWidth()
                                 .height(50.dp)
                                 .clip(RoundedCornerShape(25.dp))
-                                .background(NoxPrimary.copy(alpha = 0.2f)),
+                                .background(colorScheme.primary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
@@ -375,14 +385,14 @@ fun AppDetailScreen(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    color = NoxPrimary,
+                                    color = colorScheme.primary,
                                     strokeWidth = 2.dp
                                 )
                                 Text(
                                     text = "Connecting to CDN...",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = NoxPrimary
+                                    color = colorScheme.primary
                                 )
                             }
                         }
@@ -394,48 +404,68 @@ fun AppDetailScreen(
                                 .fillMaxWidth()
                                 .height(50.dp)
                                 .clip(RoundedCornerShape(25.dp))
-                                .background(NoxPrimary.copy(alpha = 0.25f)),
+                                .background(colorScheme.primary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "Installing package in background...",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NoxPrimary
+                                color = colorScheme.primary
                             )
                         }
                     }
 
                     else -> {
-                        val (btnText, btnColor) = when {
-                            app.isSelfApp && app.hasUpdate -> "Update Nox Store to v${app.latestVersionName}" to NoxUpdateBlue
-                            app.hasUpdate -> "Update to v${app.latestVersionName}" to NoxUpdateBlue
-                            app.isInstalled -> "Open Application" to NoxPrimary
-                            else -> "Install" to NoxInstallGreen
-                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (downloadState is DownloadState.Failed) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(colorScheme.error.copy(alpha = 0.14f))
+                                        .border(1.dp, colorScheme.error.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = downloadState.error,
+                                        color = colorScheme.error,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .clip(RoundedCornerShape(25.dp))
-                                .background(btnColor)
-                                .clickable { onActionClick() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = btnText,
-                                color = Color.White,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            val (btnText, btnColor) = when {
+                                app.isSelfApp && app.hasUpdate -> "Update Nox Store to v${app.latestVersionName}" to NoxUpdateBlue
+                                app.hasUpdate -> "Update to v${app.latestVersionName}" to NoxUpdateBlue
+                                app.isInstalled -> "Open Application" to colorScheme.primary
+                                downloadState is DownloadState.Downloaded -> "Install Downloaded APK" to NoxInstallGreen
+                                else -> "Install" to NoxInstallGreen
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp)
+                                    .clip(RoundedCornerShape(25.dp))
+                                    .background(btnColor)
+                                    .clickable { onActionClick() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = btnText,
+                                    color = Color.White,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Screenshots Gallery
+        // Play Store Style Screenshots Gallery
         if (app.screenshots.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(18.dp))
@@ -443,7 +473,7 @@ fun AppDetailScreen(
                     text = "Screenshots",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     ),
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
                 )
@@ -455,11 +485,12 @@ fun AppDetailScreen(
                     items(app.screenshots) { url ->
                         Box(
                             modifier = Modifier
-                                .width(170.dp)
-                                .height(300.dp)
+                                .width(175.dp)
+                                .height(310.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(NoxCard)
-                                .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                                .background(colorScheme.surfaceVariant)
+                                .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
+                                .clickable { selectedScreenshotUrl = url }
                         ) {
                             AsyncImage(
                                 model = url,
@@ -482,8 +513,8 @@ fun AppDetailScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(NoxCard)
-                        .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                        .background(colorScheme.surfaceVariant)
+                        .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
                         .padding(16.dp)
                 ) {
                     Row(
@@ -495,14 +526,14 @@ fun AppDetailScreen(
                             text = "What's new",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = colorScheme.onSurface
                             )
                         )
                         Text(
                             text = "v${app.latestVersionName}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NoxAccentCyan
+                            color = colorScheme.secondary
                         )
                     }
 
@@ -517,13 +548,13 @@ fun AppDetailScreen(
                         ) {
                             Text(
                                 text = "• ",
-                                color = NoxAccentCyan,
+                                color = colorScheme.secondary,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = logItem,
                                 fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = colorScheme.onSurface,
                                 lineHeight = 18.sp
                             )
                         }
@@ -544,7 +575,7 @@ fun AppDetailScreen(
                     text = "About this app",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
                 )
 
@@ -553,30 +584,135 @@ fun AppDetailScreen(
                 Text(
                     text = app.description.ifBlank { app.summary },
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colorScheme.onSurfaceVariant,
                         lineHeight = 20.sp
                     )
                 )
             }
         }
 
+        // Play Store Style App Support / Developer Contact Section
+        item {
+            val effectiveWebsite = app.developerWebsite.ifBlank {
+                if (!app.githubRepo.isNullOrBlank()) "https://github.com/${app.githubRepo}" else ""
+            }
+            val hasSupportInfo = app.developerEmail.isNotBlank() ||
+                effectiveWebsite.isNotBlank() ||
+                app.developerLocation.isNotBlank() ||
+                app.developerBio.isNotBlank()
+
+            if (hasSupportInfo) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(colorScheme.surfaceVariant)
+                        .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { supportExpanded = !supportExpanded },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "App support & Developer",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onSurface
+                                )
+                            )
+                            Text(
+                                text = app.developer,
+                                fontSize = 11.sp,
+                                color = colorScheme.secondary
+                            )
+                        }
+                        Icon(
+                            imageVector = if (supportExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                            contentDescription = null,
+                            tint = colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    AnimatedVisibility(visible = supportExpanded) {
+                        Column(
+                            modifier = Modifier.padding(top = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (app.developerBio.isNotBlank()) {
+                                Text(
+                                    text = app.developerBio,
+                                    fontSize = 12.sp,
+                                    color = colorScheme.onSurfaceVariant,
+                                    lineHeight = 17.sp
+                                )
+                            }
+
+                            if (effectiveWebsite.isNotBlank()) {
+                                DeveloperSupportRow(
+                                    icon = Icons.Rounded.Language,
+                                    label = "Website",
+                                    value = effectiveWebsite,
+                                    onClick = {
+                                        val url = if (effectiveWebsite.startsWith("http")) effectiveWebsite else "https://$effectiveWebsite"
+                                        try {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        } catch (_: Exception) {}
+                                    }
+                                )
+                            }
+
+                            if (app.developerEmail.isNotBlank()) {
+                                DeveloperSupportRow(
+                                    icon = Icons.Rounded.Email,
+                                    label = "Support email",
+                                    value = app.developerEmail,
+                                    onClick = {
+                                        try {
+                                            val mailIntent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${app.developerEmail}"))
+                                            context.startActivity(mailIntent)
+                                        } catch (_: Exception) {}
+                                    }
+                                )
+                            }
+
+                            if (app.developerLocation.isNotBlank()) {
+                                DeveloperSupportRow(
+                                    icon = Icons.Rounded.LocationOn,
+                                    label = "Address",
+                                    value = app.developerLocation,
+                                    onClick = null
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // App Specifications & Technical Details
         item {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(NoxCard)
-                    .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                    .background(colorScheme.surfaceVariant)
+                    .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
                     .padding(16.dp)
             ) {
                 Text(
                     text = "App Specifications",
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
                 )
 
@@ -591,9 +727,49 @@ fun AppDetailScreen(
                 )
                 SpecRow(label = "Minimum Android", value = "Android 8.0 (API ${app.minSdk})")
                 SpecRow(label = "Target Android", value = "Android 15 (API ${app.targetSdk})")
-                SpecRow(label = "Silent Updates", value = "Supported (Android 12+)")
+                SpecRow(label = "Silent Updates", value = "Supported (Android 12–15)")
                 if (app.githubRepo != null) {
                     SpecRow(label = "Source Repository", value = app.githubRepo)
+                }
+            }
+        }
+    }
+
+    // Full-screen Screenshot Viewer Dialog
+    if (selectedScreenshotUrl != null) {
+        Dialog(
+            onDismissRequest = { selectedScreenshotUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.94f))
+                    .clickable { selectedScreenshotUrl = null },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = selectedScreenshotUrl,
+                    contentDescription = "Screenshot Preview",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+
+                IconButton(
+                    onClick = { selectedScreenshotUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.6f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
                 }
             }
         }
@@ -601,7 +777,45 @@ fun AppDetailScreen(
 }
 
 @Composable
+private fun DeveloperSupportRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onClick: (() -> Unit)?
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = colorScheme.secondary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Column {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
 private fun SpecRow(label: String, value: String) {
+    val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -611,13 +825,13 @@ private fun SpecRow(label: String, value: String) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = TextMuted
+            color = colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = colorScheme.onSurface
         )
     }
 }

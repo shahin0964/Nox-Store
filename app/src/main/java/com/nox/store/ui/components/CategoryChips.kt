@@ -1,6 +1,7 @@
 package com.nox.store.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxPrimary
 
 @Composable
 fun CategoryChips(
@@ -31,6 +29,7 @@ fun CategoryChips(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val colorScheme = MaterialTheme.colorScheme
 
     Row(
         modifier = modifier
@@ -42,13 +41,17 @@ fun CategoryChips(
     ) {
         categories.forEach { category ->
             val isSelected = category == selectedCategory
-            val bgColor = if (isSelected) NoxPrimary else NoxCard
-            val textColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            val bgColor = if (isSelected) colorScheme.primary else colorScheme.surfaceVariant
+            val textColor = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(bgColor)
+                    .then(
+                        if (!isSelected) Modifier.border(1.dp, colorScheme.outline, RoundedCornerShape(20.dp))
+                        else Modifier
+                    )
                     .clickable { onCategorySelected(category) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center

@@ -1,6 +1,9 @@
 package com.nox.store.ui.screens
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +49,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
 import com.nox.store.data.repository.AdminRepository
@@ -52,10 +61,6 @@ import com.nox.store.data.repository.DeveloperRepository
 import com.nox.store.data.repository.DownloadManager
 import com.nox.store.data.repository.SettingsRepository
 import com.nox.store.ui.theme.NoxAccentPink
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxCardBorder
-import com.nox.store.ui.theme.NoxPrimary
-import com.nox.store.ui.theme.TextMuted
 
 enum class StoreTab(val title: String, val icon: ImageVector) {
     HOME("Apps", Icons.Rounded.Apps),
@@ -74,16 +79,72 @@ fun MainScaffold(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     val apps by appsRepository.apps.collectAsState()
     val isRefreshing by appsRepository.isRefreshing.collectAsState()
     val downloadStates by downloadManager.downloadStates.collectAsState()
     val settings by settingsRepository.settings.collectAsState()
     val storeNotice by adminRepository.storeNotice.collectAsState()
+    val developerProfile by developerRepository.developerProfile.collectAsState()
 
     var currentTab by remember { mutableStateOf(StoreTab.HOME) }
     var selectedAppDetail by remember { mutableStateOf<AppItem?>(null) }
     var showDeveloperStudio by remember { mutableStateOf(false) }
     var showAdminPanel by remember { mutableStateOf(false) }
+
+    // Real-time refresh whenever the user returns to Nox Store (e.g., after uninstalling or installing an app)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                appsRepository.refreshInstalledStatus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Real-time BroadcastReceiver for package install / uninstall / update events
+    DisposableEffect(context) {
+        val packageReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                val pkg = intent?.data?.schemeSpecificPart
+                appsRepository.refreshInstalledStatus()
+                if (pkg != null && intent.action == Intent.ACTION_PACKAGE_REMOVED) {
+                    downloadManager.clearState(pkg)
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        ContextCompat.registerReceiver(
+            context,
+            packageReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
+        onDispose {
+            try {
+                context.unregisterReceiver(packageReceiver)
+            } catch (_: Exception) {}
+        }
+    }
+
+    // Keep download states synchronized with actual installed status (clears stale Installed states after uninstall)
+    LaunchedEffect(apps) {
+        apps.forEach { app ->
+            val st = downloadStates[app.packageName]
+            if (!app.isInstalled && st is DownloadState.Installed) {
+                downloadManager.clearState(app.packageName)
+            }
+        }
+    }
 
     val updatesCount = apps.count { it.hasUpdate }
 
@@ -100,14 +161,12 @@ fun MainScaffold(
 
     val handleAppAction: (AppItem) -> Unit = { app ->
         if (app.isInstalled && !app.hasUpdate) {
-            // Launch installed app
             val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
             if (launchIntent != null) {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(launchIntent)
             }
         } else {
-            // Install or Update
             downloadManager.startDownload(
                 app = app,
                 autoInstall = true,
@@ -121,6 +180,7 @@ fun MainScaffold(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding(),
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (selectedAppDetail == null && !showDeveloperStudio && !showAdminPanel) {
                 StoreBottomNav(
@@ -141,6 +201,7 @@ fun MainScaffold(
                     AdminPanelScreen(
                         adminRepository = adminRepository,
                         appsRepository = appsRepository,
+                        ownerToken = developerProfile?.token,
                         onBackClick = { showAdminPanel = false }
                     )
                 }
@@ -156,15 +217,19 @@ fun MainScaffold(
 
                 selectedAppDetail != null -> {
                     val app = selectedAppDetail!!
-                    val currentAppInList = apps.firstOrNull { it.packageName == app.packageName } ?: app
-                    val downloadState = downloadStates[app.packageName] ?: DownloadState.Idle
+                    val currentAppInList = apps.firstOrNull {
+                        it.id == app.id || it.packageName == app.packageName
+                    } ?: app
+                    val downloadState = downloadStates[currentAppInList.packageName]
+                        ?: downloadStates[app.packageName]
+                        ?: DownloadState.Idle
 
                     AppDetailScreen(
                         app = currentAppInList,
                         downloadState = downloadState,
                         onBackClick = { selectedAppDetail = null },
                         onActionClick = { handleAppAction(currentAppInList) },
-                        onCancelDownload = { downloadManager.cancelDownload(app.packageName) }
+                        onCancelDownload = { downloadManager.cancelDownload(currentAppInList.packageName) }
                     )
                 }
 
@@ -231,13 +296,15 @@ fun StoreBottomNav(
     onTabSelected: (StoreTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(NoxCard)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(24.dp))
+            .background(colorScheme.surfaceVariant)
+            .border(1.dp, colorScheme.outline, RoundedCornerShape(24.dp))
             .padding(vertical = 6.dp)
     ) {
         Row(
@@ -247,7 +314,7 @@ fun StoreBottomNav(
         ) {
             StoreTab.values().forEach { tab ->
                 val isSelected = tab == currentTab
-                val contentColor = if (isSelected) NoxPrimary else TextMuted
+                val contentColor = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant
 
                 Column(
                     modifier = Modifier

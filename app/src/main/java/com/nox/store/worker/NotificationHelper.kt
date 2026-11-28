@@ -100,4 +100,26 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify(NOTIF_ID_FAILURE, notification)
         } catch (_: SecurityException) {}
     }
+
+    fun showPendingInstallConfirmation(context: Context, packageName: String, confirmIntent: Intent) {
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            packageName.hashCode(),
+            confirmIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_UPDATES)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Ready to Update")
+            .setContentText("Tap to complete update & enable future silent updates for $packageName")
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(packageName.hashCode(), notification)
+        } catch (_: SecurityException) {}
+    }
 }

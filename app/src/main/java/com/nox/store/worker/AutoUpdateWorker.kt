@@ -32,7 +32,7 @@ class AutoUpdateWorker(
 
         // Refresh installed packages and sync real releases from GitHub
         appsRepo.refreshInstalledStatus()
-        appsRepo.syncAllFromGitHub()
+        appsRepo.syncAllFromGitHubSync()
 
         val apps = appsRepo.apps.value
         val updates = apps.filter { it.hasUpdate }
@@ -50,10 +50,10 @@ class AutoUpdateWorker(
         }
 
         if (settings.unattendedMode) {
-            // Android 12+ Silent background update
+            // Android 12+ / 15 Native Silent background update
             for (app in updates) {
                 Log.i(TAG, "Initiating silent background update for ${app.name}...")
-                downloadManager.startDownload(
+                downloadManager.executeDownloadAndInstall(
                     app = app,
                     autoInstall = true,
                     unattended = true

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,35 +17,57 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.remember
-import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
-import com.nox.store.ui.theme.NoxAccentCyan
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxCardBorder
 import com.nox.store.ui.theme.NoxInstallGreen
-import com.nox.store.ui.theme.NoxPrimary
 import com.nox.store.ui.theme.NoxUpdateBlue
-import com.nox.store.ui.theme.TextMuted
+
+@Composable
+private fun MonogramFallbackIcon(
+    appName: String,
+    sizeDp: Int
+) {
+    val initial = appName.firstOrNull()?.uppercase() ?: "N"
+    val gradientColors = when ((appName.hashCode() % 4 + 4) % 4) {
+        0 -> listOf(Color(0xFF7C5CFC), Color(0xFF5B36F5))
+        1 -> listOf(Color(0xFF00C853), Color(0xFF009688))
+        2 -> listOf(Color(0xFFFF4081), Color(0xFFC2185B))
+        else -> listOf(Color(0xFF00E5FF), Color(0xFF0097A7))
+    }
+
+    Box(
+        modifier = Modifier
+            .size(sizeDp.dp)
+            .clip(RoundedCornerShape((sizeDp * 0.24).dp))
+            .background(Brush.linearGradient(gradientColors)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initial,
+            color = Color.White,
+            fontSize = (sizeDp * 0.44).sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
 
 @Composable
 fun AppIcon(
@@ -59,59 +82,40 @@ fun AppIcon(
         if (!packageName.isNullOrBlank()) {
             try {
                 context.packageManager.getApplicationIcon(packageName)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         } else null
     }
 
-    val initial = appName.firstOrNull()?.uppercase() ?: "N"
-    val gradientColors = when ((appName.hashCode() % 4 + 4) % 4) {
-        0 -> listOf(Color(0xFF7C5CFC), Color(0xFF5B36F5))
-        1 -> listOf(Color(0xFF00C853), Color(0xFF009688))
-        2 -> listOf(Color(0xFFFF4081), Color(0xFFC2185B))
-        else -> listOf(Color(0xFF00E5FF), Color(0xFF0097A7))
-    }
-
     val modelToLoad: Any? = installedDrawable ?: iconUrl.takeIf { it.isNotBlank() && !it.endsWith(".xml") }
 
+    // Pure transparent container so ONLY the icon renders without any extra shadow or border box
     Box(
-        modifier = modifier
-            .size(sizeDp.dp)
-            .clip(RoundedCornerShape((sizeDp * 0.28).dp))
-            .background(Brush.linearGradient(gradientColors))
-            .border(1.dp, NoxCardBorder.copy(alpha = 0.5f), RoundedCornerShape((sizeDp * 0.28).dp)),
+        modifier = modifier.size(sizeDp.dp),
         contentAlignment = Alignment.Center
     ) {
         if (modelToLoad != null) {
             SubcomposeAsyncImage(
                 model = modelToLoad,
                 contentDescription = appName,
-                modifier = Modifier
-                    .size(sizeDp.dp)
-                    .clip(RoundedCornerShape((sizeDp * 0.28).dp)),
-                contentScale = ContentScale.Crop,
+                modifier = if (installedDrawable != null) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape((sizeDp * 0.22).dp))
+                },
+                contentScale = if (installedDrawable != null) ContentScale.Fit else ContentScale.Crop,
+                loading = {
+                    MonogramFallbackIcon(appName = appName, sizeDp = sizeDp)
+                },
                 error = {
-                    Box(
-                        modifier = Modifier.size(sizeDp.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = initial,
-                            color = Color.White,
-                            fontSize = (sizeDp * 0.44).sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    MonogramFallbackIcon(appName = appName, sizeDp = sizeDp)
                 }
             )
         } else {
-            Text(
-                text = initial,
-                color = Color.White,
-                fontSize = (sizeDp * 0.44).sp,
-                fontWeight = FontWeight.Bold
-            )
+            MonogramFallbackIcon(appName = appName, sizeDp = sizeDp)
         }
     }
 }
@@ -124,12 +128,14 @@ fun AppCardRow(
     onActionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(NoxCard)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(18.dp))
+            .background(colorScheme.surfaceVariant)
+            .border(1.dp, colorScheme.outline, RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -146,7 +152,7 @@ fun AppCardRow(
                     text = app.name,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -157,12 +163,12 @@ fun AppCardRow(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(NoxPrimary.copy(alpha = 0.25f))
+                            .background(colorScheme.primary.copy(alpha = 0.18f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "STORE",
-                            color = NoxAccentCyan,
+                            color = colorScheme.secondary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -174,7 +180,7 @@ fun AppCardRow(
 
             Text(
                 text = app.summary.ifBlank { app.developer },
-                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                style = MaterialTheme.typography.bodySmall.copy(color = colorScheme.onSurfaceVariant),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -186,7 +192,6 @@ fun AppCardRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Real Stars
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -194,42 +199,40 @@ fun AppCardRow(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "Stars",
-                        tint = if (app.realStars > 0) Color(0xFFFFB300) else TextMuted,
+                        tint = if (app.realStars > 0) Color(0xFFFFB300) else colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
                         text = app.formattedRating,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
                 }
 
-                Text(text = "•", fontSize = 10.sp, color = TextMuted)
+                Text(text = "•", fontSize = 10.sp, color = colorScheme.onSurfaceVariant)
 
-                // Real Downloads
                 Text(
                     text = "${app.formattedDownloads} dl",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colorScheme.onSurfaceVariant
                 )
 
-                Text(text = "•", fontSize = 10.sp, color = TextMuted)
+                Text(text = "•", fontSize = 10.sp, color = colorScheme.onSurfaceVariant)
 
-                // Size
                 Text(
                     text = app.formattedSize,
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colorScheme.onSurfaceVariant
                 )
 
                 if (app.hasUpdate) {
-                    Text(text = "•", fontSize = 10.sp, color = TextMuted)
+                    Text(text = "•", fontSize = 10.sp, color = colorScheme.onSurfaceVariant)
                     Text(
                         text = "v${app.latestVersionName}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NoxAccentCyan
+                        color = colorScheme.secondary
                     )
                 }
             }
@@ -252,6 +255,8 @@ fun AppActionButton(
     onActionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     when (downloadState) {
         is DownloadState.Downloading -> {
             Box(
@@ -263,14 +268,14 @@ fun AppActionButton(
                 CircularProgressIndicator(
                     progress = { downloadState.progress },
                     modifier = Modifier.size(34.dp),
-                    color = NoxAccentCyan,
+                    color = colorScheme.secondary,
                     strokeWidth = 3.dp
                 )
                 Text(
                     text = "${downloadState.progressPercent}%",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = colorScheme.onSurface
                 )
             }
         }
@@ -282,7 +287,7 @@ fun AppActionButton(
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
-                    color = NoxPrimary,
+                    color = colorScheme.primary,
                     strokeWidth = 2.dp
                 )
             }
@@ -292,7 +297,7 @@ fun AppActionButton(
             Box(
                 modifier = modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(NoxPrimary.copy(alpha = 0.2f))
+                    .background(colorScheme.primary.copy(alpha = 0.18f))
                     .padding(horizontal = 14.dp, vertical = 7.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -300,7 +305,25 @@ fun AppActionButton(
                     text = "Installing...",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = NoxPrimary
+                    color = colorScheme.primary
+                )
+            }
+        }
+
+        is DownloadState.Downloaded -> {
+            Box(
+                modifier = modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(NoxInstallGreen)
+                    .clickable { onActionClick() }
+                    .padding(horizontal = 16.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Install",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         }
@@ -308,7 +331,7 @@ fun AppActionButton(
         else -> {
             val (buttonText, bgColor, textColor) = when {
                 app.hasUpdate -> Triple("Update", NoxUpdateBlue, Color.White)
-                app.isInstalled -> Triple("Open", NoxCardBorder, MaterialTheme.colorScheme.onSurface)
+                app.isInstalled -> Triple("Open", colorScheme.outline, colorScheme.onSurface)
                 else -> Triple("Install", NoxInstallGreen, Color.White)
             }
 
@@ -337,6 +360,8 @@ fun AppCardGridItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column(
         modifier = modifier
             .width(96.dp)
@@ -352,7 +377,7 @@ fun AppCardGridItem(
             text = app.name,
             style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = colorScheme.onSurface
             ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -367,13 +392,13 @@ fun AppCardGridItem(
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = null,
-                tint = if (app.realStars > 0) Color(0xFFFFB300) else TextMuted,
+                tint = if (app.realStars > 0) Color(0xFFFFB300) else colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(11.dp)
             )
             Text(
                 text = app.formattedRating,
                 fontSize = 10.sp,
-                color = TextMuted
+                color = colorScheme.onSurfaceVariant
             )
         }
     }

@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -164,7 +166,7 @@ fun DeveloperStudioScreen(
     var isInspectingRepo by remember { mutableStateOf(false) }
     var showPublishSheet by remember { mutableStateOf(false) }
     var publishSuccessMsg by remember { mutableStateOf<String?>(null) }
-    var showStudioNameDialog by remember { mutableStateOf(false) }
+    var showDeveloperProfileSheet by remember { mutableStateOf(false) }
 
     // Fetch repositories when developer is connected
     LaunchedEffect(developerProfile) {
@@ -208,7 +210,7 @@ fun DeveloperStudioScreen(
                 Text(
                     text = "Open App Marketplace & Registry",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -238,7 +240,7 @@ fun DeveloperStudioScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = publishSuccessMsg ?: "",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -279,7 +281,7 @@ fun DeveloperStudioScreen(
                 item {
                     DeveloperProfileCard(
                         profile = dev,
-                        onEditStudioName = { showStudioNameDialog = true },
+                        onEditProfile = { showDeveloperProfileSheet = true },
                         onSignOut = { developerRepository.signOut() }
                     )
                     Spacer(modifier = Modifier.height(14.dp))
@@ -431,11 +433,11 @@ fun DeveloperStudioScreen(
 
     // Modal Sheet for Publishing the App
     if (showPublishSheet && selectedRepoPreview != null) {
+        val colorScheme = MaterialTheme.colorScheme
         val preview = selectedRepoPreview!!
-        val defaultDevName = developerProfile?.studioName?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+        val publisherName = developerProfile?.studioName?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
             ?: developerProfile?.displayName?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
             ?: developerProfile?.username ?: "Nox Developer"
-        var appDevName by remember(preview, developerProfile) { mutableStateOf(defaultDevName) }
         var appTitle by remember(preview.appName) { mutableStateOf(preview.appName) }
         var appPkg by remember(preview.packageName) { mutableStateOf(preview.packageName) }
         var appSummary by remember(preview.summary) { mutableStateOf(preview.summary) }
@@ -447,18 +449,19 @@ fun DeveloperStudioScreen(
         ModalBottomSheet(
             onDismissRequest = { showPublishSheet = false },
             sheetState = sheetState,
-            containerColor = NoxCard
+            containerColor = colorScheme.surfaceVariant
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Rounded.RocketLaunch,
                         contentDescription = null,
-                        tint = NoxAccentCyan,
+                        tint = colorScheme.secondary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -466,7 +469,7 @@ fun DeveloperStudioScreen(
                         text = "Publish App to Nox Store",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colorScheme.onSurface
                         )
                     )
                 }
@@ -495,12 +498,12 @@ fun DeveloperStudioScreen(
                                     text = "Ready to Publish: v${preview.latestTag}",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
-                                    color = Color.White
+                                    color = colorScheme.onSurface
                                 )
                                 Text(
                                     text = "APK Size: ${(preview.apkSize / (1024 * 1024))} MB",
                                     fontSize = 11.sp,
-                                    color = NoxAccentCyan
+                                    color = colorScheme.secondary
                                 )
                             }
                         }
@@ -510,21 +513,89 @@ fun DeveloperStudioScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+                            .background(colorScheme.error.copy(alpha = 0.2f))
                             .padding(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Rounded.ErrorOutline,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
+                                tint = colorScheme.error,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = preview.errorMessage ?: "No release APK found",
                                 fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.error
+                                color = colorScheme.error
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Publisher Profile Identity Summary (linked to Developer Profile)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colorScheme.background)
+                        .border(1.dp, colorScheme.outline, RoundedCornerShape(12.dp))
+                        .clickable { showDeveloperProfileSheet = true }
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Publisher: $publisherName",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface
+                        )
+                        val infoParts = listOfNotNull(
+                            developerProfile?.email?.takeIf { it.isNotBlank() },
+                            developerProfile?.website?.takeIf { it.isNotBlank() },
+                            developerProfile?.location?.takeIf { it.isNotBlank() }
+                        )
+                        Text(
+                            text = if (infoParts.isNotEmpty()) infoParts.joinToString(" • ") else "Tap to complete Developer Info (email, website, bio)",
+                            fontSize = 10.sp,
+                            color = colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Edit Profile",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.secondary
+                    )
+                }
+
+                // Screenshots detected from README.md
+                if (preview.screenshots.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Screenshots from README.md (${preview.screenshots.size})",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(preview.screenshots) { ssUrl ->
+                            AsyncImage(
+                                model = ssUrl,
+                                contentDescription = "Screenshot",
+                                modifier = Modifier
+                                    .width(80.dp)
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, colorScheme.outline, RoundedCornerShape(10.dp)),
+                                contentScale = ContentScale.Crop
                             )
                         }
                     }
@@ -533,35 +604,28 @@ fun DeveloperStudioScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // App Title Field
-                Text(text = "App Display Name", fontSize = 12.sp, color = TextMuted)
+                Text(text = "App Display Name", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 BasicInputBox(value = appTitle, onValueChange = { appTitle = it })
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Developer / Studio Name Field
-                Text(text = "Developer / Company Name", fontSize = 12.sp, color = TextMuted)
-                Spacer(modifier = Modifier.height(4.dp))
-                BasicInputBox(value = appDevName, onValueChange = { appDevName = it })
-
-                Spacer(modifier = Modifier.height(10.dp))
-
                 // Package Name Field
-                Text(text = "Package Name", fontSize = 12.sp, color = TextMuted)
+                Text(text = "Package Name", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 BasicInputBox(value = appPkg, onValueChange = { appPkg = it })
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Summary Field
-                Text(text = "One-line Summary", fontSize = 12.sp, color = TextMuted)
+                Text(text = "One-line Summary", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 BasicInputBox(value = appSummary, onValueChange = { appSummary = it })
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Category Chips
-                Text(text = "Category", fontSize = 12.sp, color = TextMuted)
+                Text(text = "Category", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(6.dp))
                 val categories = listOf("Tools", "Communication", "Productivity", "Personalization", "Development", "Games")
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -570,7 +634,7 @@ fun DeveloperStudioScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isSelected) NoxPrimary else NoxCardBorder)
+                                .background(if (isSelected) colorScheme.primary else colorScheme.outline)
                                 .clickable { selectedCategory = cat }
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
@@ -578,7 +642,7 @@ fun DeveloperStudioScreen(
                                 text = cat,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = Color.White
+                                color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurface
                             )
                         }
                     }
@@ -592,19 +656,25 @@ fun DeveloperStudioScreen(
                         .fillMaxWidth()
                         .height(48.dp)
                         .clip(RoundedCornerShape(24.dp))
-                        .background(if (preview.hasValidApk && !isPublishing) NoxInstallGreen else NoxCardBorder)
+                        .background(if (preview.hasValidApk && !isPublishing) NoxInstallGreen else colorScheme.outline)
                         .clickable(enabled = preview.hasValidApk && !isPublishing) {
                             scope.launch {
                                 isPublishing = true
+                                val dev = developerProfile
                                 val newApp = AppItem(
                                     id = appPkg.replace(".", "_"),
                                     packageName = appPkg,
                                     name = appTitle,
-                                    developer = appDevName.ifBlank { developerProfile?.displayName ?: "Nox Developer" },
+                                    developer = publisherName,
+                                    developerEmail = dev?.email ?: "",
+                                    developerWebsite = dev?.website ?: "",
+                                    developerLocation = dev?.location ?: "",
+                                    developerBio = dev?.bio ?: "",
                                     category = selectedCategory,
                                     summary = appSummary,
                                     description = appSummary,
                                     iconUrl = "https://raw.githubusercontent.com/${preview.repoFullName}/main/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+                                    screenshots = preview.screenshots,
                                     latestVersionCode = 1,
                                     latestVersionName = preview.latestTag,
                                     downloadUrl = preview.apkUrl,
@@ -614,7 +684,7 @@ fun DeveloperStudioScreen(
                                     isFeatured = false
                                 )
 
-                                appsRepository.publishApp(newApp, developerProfile?.token)
+                                appsRepository.publishApp(newApp, dev?.token)
                                 isPublishing = false
                                 showPublishSheet = false
                                 publishSuccessMsg = "🎉 ${newApp.name} successfully published to Nox Store!"
@@ -829,53 +899,126 @@ fun DeveloperStudioScreen(
         )
     }
 
-    // Developer Studio / Company Name Dialog
-    if (showStudioNameDialog && developerProfile != null) {
+    // Complete Play Store-style Developer Profile & Publisher Info Sheet
+    if (showDeveloperProfileSheet && developerProfile != null) {
+        val colorScheme = MaterialTheme.colorScheme
         val currentProfile = developerProfile!!
         var tempStudioName by remember(currentProfile.studioName) {
-            mutableStateOf(currentProfile.studioName)
+            mutableStateOf(currentProfile.studioName.ifBlank { currentProfile.displayName })
         }
-        AlertDialog(
-            onDismissRequest = { showStudioNameDialog = false },
-            title = {
+        var tempBio by remember(currentProfile.bio) { mutableStateOf(currentProfile.bio) }
+        var tempEmail by remember(currentProfile.email) { mutableStateOf(currentProfile.email) }
+        var tempWebsite by remember(currentProfile.website) { mutableStateOf(currentProfile.website) }
+        var tempLocation by remember(currentProfile.location) { mutableStateOf(currentProfile.location) }
+
+        val devSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showDeveloperProfileSheet = false },
+            sheetState = devSheetState,
+            containerColor = colorScheme.surfaceVariant
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
                 Text(
-                    text = "Developer / Company Name",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    text = "Developer Profile & Info",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
+                    )
                 )
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Set your official developer studio or company name (e.g. 'Nox Studios', 'Metro Telecom'). This name will appear on apps you publish to Nox Store.",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    BasicInputBox(
-                        value = tempStudioName,
-                        onValueChange = { tempStudioName = it },
-                        placeholder = "e.g. Nox Studios"
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        developerRepository.setStudioName(tempStudioName)
-                        showStudioNameDialog = false
-                    }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Just like Google Play Console — this information is shown on every app you publish to Nox Store.",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(text = "Developer / Company / Studio Name", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicInputBox(
+                    value = tempStudioName,
+                    onValueChange = { tempStudioName = it },
+                    placeholder = "e.g. Nox Studios / Metro Telecom"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(text = "About Developer / Bio", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicInputBox(
+                    value = tempBio,
+                    onValueChange = { tempBio = it },
+                    placeholder = "Short intro about your studio or apps...",
+                    singleLine = false
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(text = "Support Email", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicInputBox(
+                    value = tempEmail,
+                    onValueChange = { tempEmail = it },
+                    placeholder = "e.g. support@noxstudios.dev"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(text = "Website / Portfolio URL", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicInputBox(
+                    value = tempWebsite,
+                    onValueChange = { tempWebsite = it },
+                    placeholder = "e.g. https://github.com/shahin0964"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(text = "Location / Address", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicInputBox(
+                    value = tempLocation,
+                    onValueChange = { tempLocation = it },
+                    placeholder = "e.g. Dhaka, Bangladesh"
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(colorScheme.primary)
+                        .clickable {
+                            developerRepository.saveDeveloperInfo(
+                                studioName = tempStudioName,
+                                bio = tempBio,
+                                email = tempEmail,
+                                website = tempWebsite,
+                                location = tempLocation
+                            )
+                            showDeveloperProfileSheet = false
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("Save", color = NoxAccentCyan, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Save Developer Profile",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStudioNameDialog = false }) {
-                    Text("Cancel", color = TextMuted)
-                }
-            },
-            containerColor = NoxCard
-        )
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
     }
 }
 
@@ -1104,15 +1247,17 @@ fun DeveloperOnboardingCard(
 @Composable
 fun DeveloperProfileCard(
     profile: DeveloperProfile,
-    onEditStudioName: () -> Unit,
+    onEditProfile: () -> Unit,
     onSignOut: () -> Unit
 ) {
-    Box(
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(NoxCard)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(20.dp))
+            .background(colorScheme.surfaceVariant)
+            .border(1.dp, colorScheme.outline, RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1130,7 +1275,7 @@ fun DeveloperProfileCard(
                     modifier = Modifier
                         .size(54.dp)
                         .clip(CircleShape)
-                        .background(NoxPrimary),
+                        .background(colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1145,29 +1290,28 @@ fun DeveloperProfileCard(
             Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                val cleanDisplay = if (profile.displayName.isNotBlank() && !profile.displayName.equals("null", ignoreCase = true)) {
-                    profile.displayName
-                } else {
-                    profile.username
-                }
+                val cleanDisplay = profile.studioName.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    ?: profile.displayName.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    ?: profile.username
+
                 Text(
                     text = cleanDisplay,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = colorScheme.onSurface
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "@${profile.username}",
                         fontSize = 12.sp,
-                        color = NoxAccentCyan
+                        color = colorScheme.secondary
                     )
                     if (profile.isVerified) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Rounded.Verified,
                             contentDescription = "Verified",
-                            tint = if (profile.isOwner) Color(0xFFFFB300) else NoxAccentCyan,
+                            tint = if (profile.isOwner) Color(0xFFFFB300) else colorScheme.secondary,
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -1177,7 +1321,7 @@ fun DeveloperProfileCard(
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 if (profile.isOwner) Color(0xFFFFB300).copy(alpha = 0.2f)
-                                else NoxPrimary.copy(alpha = 0.25f)
+                                else colorScheme.primary.copy(alpha = 0.2f)
                             )
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
@@ -1185,34 +1329,9 @@ fun DeveloperProfileCard(
                             text = profile.badgeLevel,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (profile.isOwner) Color(0xFFFFB300) else NoxAccentCyan
+                            color = if (profile.isOwner) Color(0xFFFFB300) else colorScheme.secondary
                         )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Studio / Brand Name Chip with edit action
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(NoxCardBorder.copy(alpha = 0.6f))
-                        .clickable { onEditStudioName() }
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                ) {
-                    Text(text = "🏢", fontSize = 11.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (profile.studioName.isNotBlank() && !profile.studioName.equals("null", ignoreCase = true)) {
-                            profile.studioName
-                        } else {
-                            "Set Studio / Brand"
-                        },
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (profile.studioName.isNotBlank()) NoxAccentCyan else TextMuted
-                    )
                 }
 
                 if (profile.bio.isNotBlank() && !profile.bio.equals("null", ignoreCase = true)) {
@@ -1220,8 +1339,8 @@ fun DeveloperProfileCard(
                     Text(
                         text = profile.bio,
                         fontSize = 11.sp,
-                        color = TextMuted,
-                        maxLines = 1
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = 2
                     )
                 }
             }
@@ -1229,16 +1348,62 @@ fun DeveloperProfileCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NoxCardBorder)
+                    .background(colorScheme.outline)
                     .clickable { onSignOut() }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = "Sign out",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colorScheme.onSurfaceVariant
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Full Developer Profile Info Bar (Play Store Style)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(colorScheme.background)
+                .border(1.dp, colorScheme.outline, RoundedCornerShape(12.dp))
+                .clickable { onEditProfile() }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Developer Profile & Support Info",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface
+                )
+                val summaryItems = listOfNotNull(
+                    profile.email.takeIf { it.isNotBlank() },
+                    profile.website.takeIf { it.isNotBlank() },
+                    profile.location.takeIf { it.isNotBlank() }
+                )
+                Text(
+                    text = if (summaryItems.isNotEmpty()) {
+                        summaryItems.joinToString(" • ")
+                    } else {
+                        "Add Studio Name, Bio, Email, Website & Address"
+                    },
+                    fontSize = 11.sp,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Edit Info",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.secondary
+            )
         }
     }
 }
@@ -1249,12 +1414,14 @@ fun GitHubRepoCard(
     isInspecting: Boolean,
     onInspectClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(NoxCard)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+            .background(colorScheme.surfaceVariant)
+            .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1263,7 +1430,7 @@ fun GitHubRepoCard(
                 text = repo.name,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurface
+                color = colorScheme.onSurface
             )
 
             if (repo.description.isNotBlank() && !repo.description.equals("null", ignoreCase = true)) {
@@ -1271,7 +1438,7 @@ fun GitHubRepoCard(
                 Text(
                     text = repo.description,
                     fontSize = 11.sp,
-                    color = TextMuted,
+                    color = colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
             }
@@ -1289,13 +1456,13 @@ fun GitHubRepoCard(
                 Text(
                     text = "${repo.stars}",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "Branch: ${repo.defaultBranch}",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1332,29 +1499,32 @@ fun GitHubRepoCard(
 fun BasicInputBox(
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String = ""
+    placeholder: String = "",
+    singleLine: Boolean = true
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.background)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(12.dp))
+            .background(colorScheme.background)
+            .border(1.dp, colorScheme.outline, RoundedCornerShape(12.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         if (value.isEmpty() && placeholder.isNotEmpty()) {
-            Text(text = placeholder, color = TextMuted, fontSize = 13.sp)
+            Text(text = placeholder, color = colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            singleLine = true,
+            singleLine = singleLine,
             textStyle = TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
+                color = colorScheme.onSurface,
                 fontSize = 13.sp
             ),
-            cursorBrush = SolidColor(NoxPrimary),
+            cursorBrush = SolidColor(colorScheme.primary),
             modifier = Modifier.fillMaxWidth()
         )
     }

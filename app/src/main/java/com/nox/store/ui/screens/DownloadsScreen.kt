@@ -2,8 +2,6 @@ package com.nox.store.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
@@ -33,19 +30,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
 import com.nox.store.ui.components.AppIcon
-import com.nox.store.ui.theme.NoxAccentCyan
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxCardBorder
 import com.nox.store.ui.theme.NoxInstallGreen
-import com.nox.store.ui.theme.NoxPrimary
-import com.nox.store.ui.theme.TextMuted
 
 @Composable
 fun DownloadsScreen(
@@ -55,6 +46,7 @@ fun DownloadsScreen(
     onRetryDownload: (AppItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val activeDownloads = downloadStates.filter { (_, state) ->
         state !is DownloadState.Idle
     }
@@ -62,27 +54,27 @@ fun DownloadsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(colorScheme.background)
     ) {
         // Fixed / Sticky Top Header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
+                .background(colorScheme.background)
                 .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
             Text(
                 text = "Downloads Manager",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = colorScheme.onSurface
                 )
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "${activeDownloads.size} active operations",
                 fontSize = 12.sp,
-                color = TextMuted
+                color = colorScheme.onSurfaceVariant
             )
         }
 
@@ -104,14 +96,14 @@ fun DownloadsScreen(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(CircleShape)
-                                    .background(NoxCard)
-                                    .border(1.dp, NoxCardBorder, CircleShape),
+                                    .background(colorScheme.surfaceVariant)
+                                    .border(1.dp, colorScheme.outline, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.DownloadDone,
                                     contentDescription = null,
-                                    tint = TextMuted,
+                                    tint = colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -120,13 +112,13 @@ fun DownloadsScreen(
                                 text = "No Active Downloads",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Apps you install or update will show progress here.",
                                 fontSize = 12.sp,
-                                color = TextMuted
+                                color = colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -141,8 +133,8 @@ fun DownloadsScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 6.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(NoxCard)
-                            .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                            .background(colorScheme.surfaceVariant)
+                            .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
                             .padding(14.dp)
                     ) {
                         when (state) {
@@ -164,19 +156,19 @@ fun DownloadsScreen(
                                                 text = appName,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontSize = 14.sp,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                color = colorScheme.onSurface
                                             )
                                             Text(
                                                 text = "${state.formattedProgress} • ${state.formattedSpeed}",
                                                 fontSize = 11.sp,
-                                                color = NoxAccentCyan
+                                                color = colorScheme.secondary
                                             )
                                         }
                                         IconButton(onClick = { onCancelDownload(pkg) }) {
                                             Icon(
                                                 imageVector = Icons.Rounded.Close,
                                                 contentDescription = "Cancel",
-                                                tint = TextMuted
+                                                tint = colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
@@ -189,8 +181,8 @@ fun DownloadsScreen(
                                             .fillMaxWidth()
                                             .height(6.dp)
                                             .clip(RoundedCornerShape(3.dp)),
-                                        color = NoxAccentCyan,
-                                        trackColor = NoxCardBorder
+                                        color = colorScheme.secondary,
+                                        trackColor = colorScheme.outline
                                     )
                                 }
                             }
@@ -204,13 +196,42 @@ fun DownloadsScreen(
                                             text = appName,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = colorScheme.onSurface
                                         )
                                         Text(
                                             text = "Connecting to CDN...",
                                             fontSize = 11.sp,
-                                            color = TextMuted
+                                            color = colorScheme.onSurfaceVariant
                                         )
+                                    }
+                                }
+                            }
+
+                            is DownloadState.Downloaded -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42, packageName = app?.packageName)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = appName,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp,
+                                            color = colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Downloaded — ready to install",
+                                            fontSize = 11.sp,
+                                            color = NoxInstallGreen
+                                        )
+                                    }
+                                    if (app != null) {
+                                        IconButton(onClick = { onRetryDownload(app) }) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Refresh,
+                                                contentDescription = "Install",
+                                                tint = NoxInstallGreen
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -224,12 +245,12 @@ fun DownloadsScreen(
                                             text = appName,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = colorScheme.onSurface
                                         )
                                         Text(
                                             text = "Installing package in background...",
                                             fontSize = 11.sp,
-                                            color = NoxPrimary
+                                            color = colorScheme.primary
                                         )
                                     }
                                 }
@@ -244,7 +265,7 @@ fun DownloadsScreen(
                                             text = appName,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = colorScheme.onSurface
                                         )
                                         Text(
                                             text = "Installed successfully!",
@@ -264,12 +285,12 @@ fun DownloadsScreen(
                                             text = appName,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = colorScheme.onSurface
                                         )
                                         Text(
                                             text = state.error,
                                             fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.error
+                                            color = colorScheme.error
                                         )
                                     }
                                     if (app != null) {
@@ -277,7 +298,7 @@ fun DownloadsScreen(
                                             Icon(
                                                 imageVector = Icons.Rounded.Refresh,
                                                 contentDescription = "Retry",
-                                                tint = NoxAccentCyan
+                                                tint = colorScheme.secondary
                                             )
                                         }
                                     }

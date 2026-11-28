@@ -31,10 +31,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxCardBorder
-import com.nox.store.ui.theme.NoxPrimary
-import com.nox.store.ui.theme.TextMuted
 
 @Composable
 fun StoreSearchBar(
@@ -44,21 +40,23 @@ fun StoreSearchBar(
     placeholder: String = "Search apps, games & tools...",
     onProfileClick: () -> Unit = {}
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .height(50.dp)
             .clip(RoundedCornerShape(25.dp))
-            .background(NoxCard)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(25.dp))
+            .background(colorScheme.surfaceVariant)
+            .border(1.dp, colorScheme.outline, RoundedCornerShape(25.dp))
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.Rounded.Search,
             contentDescription = "Search",
-            tint = TextMuted,
+            tint = colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
 
@@ -71,7 +69,7 @@ fun StoreSearchBar(
             if (query.isEmpty()) {
                 Text(
                     text = placeholder,
-                    color = TextMuted,
+                    color = colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
             }
@@ -81,11 +79,11 @@ fun StoreSearchBar(
                 onValueChange = onQueryChange,
                 singleLine = true,
                 textStyle = TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = colorScheme.onSurface,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Normal
                 ),
-                cursorBrush = SolidColor(NoxPrimary),
+                cursorBrush = SolidColor(colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -94,7 +92,7 @@ fun StoreSearchBar(
             Icon(
                 imageVector = Icons.Rounded.Close,
                 contentDescription = "Clear",
-                tint = TextMuted,
+                tint = colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { onQueryChange("") }
@@ -102,14 +100,14 @@ fun StoreSearchBar(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        // Profile / Store Monogram
+        // Profile / Developer Studio Button
         Box(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
                 .background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF7C5CFC), Color(0xFF00E5FF))
+                        listOf(colorScheme.primary, colorScheme.secondary)
                     )
                 )
                 .clickable { onProfileClick() },

@@ -39,13 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
+import com.nox.store.data.model.StoreNotice
 import com.nox.store.ui.components.AppCardGridItem
 import com.nox.store.ui.components.AppCardRow
 import com.nox.store.ui.components.CategoryChips
 import com.nox.store.ui.components.HeroBanner
 import com.nox.store.ui.components.SectionHeader
 import com.nox.store.ui.components.StoreSearchBar
-import com.nox.store.ui.theme.NoxAccentCyan
 import com.nox.store.ui.theme.NoxUpdateBlue
 
 @Composable
@@ -56,9 +56,10 @@ fun HomeScreen(
     onAppAction: (AppItem) -> Unit,
     onNavigateToUpdates: () -> Unit,
     onProfileClick: () -> Unit = {},
-    adminNotice: String? = null,
+    adminNotice: StoreNotice? = null,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
 
@@ -71,7 +72,8 @@ fun HomeScreen(
         val matchesSearch = searchQuery.isBlank() ||
                 app.name.contains(searchQuery, ignoreCase = true) ||
                 app.summary.contains(searchQuery, ignoreCase = true) ||
-                app.packageName.contains(searchQuery, ignoreCase = true)
+                app.packageName.contains(searchQuery, ignoreCase = true) ||
+                app.developer.contains(searchQuery, ignoreCase = true)
         matchesCategory && matchesSearch
     }
 
@@ -80,7 +82,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(colorScheme.background)
     ) {
         // Top Search Bar (Pinned / Still at top)
         StoreSearchBar(
@@ -101,36 +103,50 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            // Broadcast Announcement from Admin
-            if (!adminNotice.isNullOrBlank() && searchQuery.isBlank()) {
+            // Broadcast Notice Banner from Admin Panel
+            if (adminNotice != null && adminNotice.message.isNotBlank() && searchQuery.isBlank()) {
                 item {
+                    val (emoji, accentColor, gradientColors) = when (adminNotice.type.uppercase()) {
+                        "WARNING" -> Triple(
+                            "⚠️",
+                            Color(0xFFFFB300),
+                            listOf(Color(0xFF472C00), Color(0xFF281900))
+                        )
+                        "UPDATE" -> Triple(
+                            "🚀",
+                            Color(0xFF00E5FF),
+                            listOf(Color(0xFF0E344D), Color(0xFF102033))
+                        )
+                        else -> Triple(
+                            "📢",
+                            colorScheme.primary,
+                            listOf(Color(0xFF2E1A5E), Color(0xFF1B163B))
+                        )
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF2E1A5E), Color(0xFF1B163B))
-                                )
-                            )
-                            .border(1.dp, Color(0xFFFFB300).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .background(Brush.linearGradient(gradientColors))
+                            .border(1.dp, accentColor.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
                             .padding(14.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "📢", fontSize = 20.sp)
+                            Text(text = emoji, fontSize = 20.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "STORE ANNOUNCEMENT",
+                                    text = adminNotice.title.uppercase(),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFFFB300),
+                                    color = accentColor,
                                     letterSpacing = 0.5.sp
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = adminNotice,
+                                    text = adminNotice.message,
                                     fontSize = 13.sp,
                                     color = Color.White
                                 )
@@ -148,7 +164,8 @@ fun HomeScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(NoxUpdateBlue.copy(alpha = 0.15f))
+                            .background(NoxUpdateBlue.copy(alpha = 0.14f))
+                            .border(1.dp, NoxUpdateBlue.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
                             .clickable { onNavigateToUpdates() }
                             .padding(14.dp)
                     ) {
@@ -159,20 +176,20 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Rounded.SystemUpdate,
                                 contentDescription = null,
-                                tint = NoxAccentCyan,
+                                tint = NoxUpdateBlue,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "$updatesCount Updates Available",
-                                    color = Color.White,
+                                    color = colorScheme.onSurface,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = "Tap to update your apps to latest versions",
-                                    color = NoxAccentCyan,
+                                    color = NoxUpdateBlue,
                                     fontSize = 12.sp
                                 )
                             }
@@ -235,7 +252,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = "No apps found matching '$searchQuery'",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colorScheme.onSurfaceVariant,
                             fontSize = 14.sp
                         )
                     }

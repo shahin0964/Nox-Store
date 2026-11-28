@@ -2,12 +2,18 @@ package com.nox.store.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Nox Store Dark Theme Palette (OLED Deep)
+// Nox Store Dark Theme Palette
 val NoxBackground = Color(0xFF0C0D14)
 val NoxSurface = Color(0xFF141622)
 val NoxCard = Color(0xFF1B1E2E)
 val NoxCardElevated = Color(0xFF24273C)
 val NoxCardBorder = Color(0xFF2D324D)
+
+// True AMOLED Pitch Black Palette
+val AmoledBackground = Color(0xFF000000)
+val AmoledSurface = Color(0xFF000000)
+val AmoledCard = Color(0xFF0C0C10)
+val AmoledCardBorder = Color(0xFF1E1E28)
 
 // Brand Accents
 val NoxPrimary = Color(0xFF7C5CFC)
@@ -27,12 +33,12 @@ val TextWhite = Color(0xFFFFFFFF)
 val TextMuted = Color(0xFF9E9EB2)
 val TextDarker = Color(0xFF64667E)
 
-// Light Theme Palette
-val LightBackground = Color(0xFFF7F8FC)
+// Clean White Light Theme Palette
+val LightBackground = Color(0xFFFFFFFF)
 val LightSurface = Color(0xFFFFFFFF)
-val LightCard = Color(0xFFF0F2F9)
-val LightCardElevated = Color(0xFFE6E9F4)
-val LightCardBorder = Color(0xFFD6DBEC)
-val LightTextPrimary = Color(0xFF121420)
-val LightTextSecondary = Color(0xFF5E6278)
-val LightTextMuted = Color(0xFF8B90A6)
+val LightCard = Color(0xFFF3F5FA)
+val LightCardElevated = Color(0xFFE9ECF5)
+val LightCardBorder = Color(0xFFDDE1EE)
+val LightTextPrimary = Color(0xFF11131E)
+val LightTextSecondary = Color(0xFF5A5E73)
+val LightTextMuted = Color(0xFF8489A0)

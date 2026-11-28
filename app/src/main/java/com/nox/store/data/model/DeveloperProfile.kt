@@ -4,6 +4,9 @@ data class DeveloperProfile(
     val username: String,
     val displayName: String = "",
     val studioName: String = "",
+    val email: String = "",
+    val website: String = "",
+    val location: String = "",
     val avatarUrl: String = "",
     val bio: String = "",
     val publicRepos: Int = 0,
@@ -32,7 +35,14 @@ data class RepoAppPreview(
     val apkUrl: String,
     val apkSize: Long,
     val hasValidApk: Boolean,
+    val screenshots: List<String> = emptyList(),
     val errorMessage: String? = null
+)
+
+data class StoreNotice(
+    val title: String = "STORE ANNOUNCEMENT",
+    val message: String = "",
+    val type: String = "INFO" // "INFO", "UPDATE", "WARNING"
 )
 
 data class DeveloperBadgeData(

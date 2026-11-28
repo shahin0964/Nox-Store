@@ -49,12 +49,12 @@ fun SectionHeader(
                     text = "See all",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = NoxAccentCyan
+                    color = MaterialTheme.colorScheme.secondary
                 )
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
-                    tint = NoxAccentCyan,
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.padding(start = 2.dp)
                 )
             }

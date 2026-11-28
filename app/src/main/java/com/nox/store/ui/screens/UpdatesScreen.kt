@@ -39,15 +39,9 @@ import androidx.compose.ui.unit.sp
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
 import com.nox.store.ui.components.AppCardRow
-import com.nox.store.ui.components.AppIcon
 import com.nox.store.ui.components.SectionHeader
-import com.nox.store.ui.theme.NoxAccentCyan
-import com.nox.store.ui.theme.NoxCard
-import com.nox.store.ui.theme.NoxCardBorder
 import com.nox.store.ui.theme.NoxInstallGreen
-import com.nox.store.ui.theme.NoxPrimary
 import com.nox.store.ui.theme.NoxUpdateBlue
-import com.nox.store.ui.theme.TextMuted
 
 @Composable
 fun UpdatesScreen(
@@ -60,19 +54,20 @@ fun UpdatesScreen(
     onUpdateAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val pendingUpdates = apps.filter { it.hasUpdate }
     val upToDateApps = apps.filter { it.isInstalled && !it.hasUpdate }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(colorScheme.background)
     ) {
         // Fixed / Sticky Header Row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
+                .background(colorScheme.background)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -82,21 +77,21 @@ fun UpdatesScreen(
                     text = "App Updates",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
                 )
                 Text(
                     text = "${pendingUpdates.size} updates pending",
                     fontSize = 12.sp,
-                    color = TextMuted
+                    color = colorScheme.onSurfaceVariant
                 )
             }
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .background(NoxCard)
-                    .border(1.dp, NoxCardBorder, RoundedCornerShape(14.dp))
+                    .background(colorScheme.surfaceVariant)
+                    .border(1.dp, colorScheme.outline, RoundedCornerShape(14.dp))
                     .clickable(enabled = !isRefreshing) { onRefresh() }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
@@ -104,7 +99,7 @@ fun UpdatesScreen(
                 if (isRefreshing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        color = NoxAccentCyan,
+                        color = colorScheme.secondary,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -115,14 +110,14 @@ fun UpdatesScreen(
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
                             contentDescription = "Check for updates",
-                            tint = NoxAccentCyan,
+                            tint = colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "Check now",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NoxAccentCyan
+                            color = colorScheme.secondary
                         )
                     }
                 }
@@ -141,8 +136,8 @@ fun UpdatesScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 6.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(NoxCard)
-                        .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                        .background(colorScheme.surfaceVariant)
+                        .border(1.dp, colorScheme.outline, RoundedCornerShape(16.dp))
                         .padding(14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -168,12 +163,12 @@ fun UpdatesScreen(
                                 text = "Automatic Updates Active",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = colorScheme.onSurface
                             )
                             Text(
-                                text = "Android 12+ unattended background updates enabled.",
+                                text = "Android 12–15 unattended background updates enabled.",
                                 fontSize = 11.sp,
-                                color = TextMuted
+                                color = colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -194,7 +189,7 @@ fun UpdatesScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(NoxUpdateBlue)
                                 .clickable { onUpdateAll() }
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -263,13 +258,13 @@ fun UpdatesScreen(
                                 text = "All Apps are Up to Date",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "No updates pending right now.",
                                 fontSize = 12.sp,
-                                color = TextMuted
+                                color = colorScheme.onSurfaceVariant
                             )
                         }
                     }

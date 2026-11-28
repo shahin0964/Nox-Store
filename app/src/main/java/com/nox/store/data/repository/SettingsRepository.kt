@@ -2,6 +2,7 @@ package com.nox.store.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.nox.store.data.model.AppThemeMode
 import com.nox.store.data.model.StoreSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,12 @@ class SettingsRepository(context: Context) {
     val settings: StateFlow<StoreSettings> = _settings.asStateFlow()
 
     private fun loadSettings(): StoreSettings {
+        val savedThemeName = prefs.getString(KEY_THEME_MODE, null)
+        val themeMode = if (savedThemeName != null) {
+            AppThemeMode.entries.firstOrNull { it.name == savedThemeName } ?: AppThemeMode.SYSTEM
+        } else {
+            AppThemeMode.SYSTEM
+        }
         return StoreSettings(
             repoUrl = prefs.getString(
                 KEY_REPO_URL,
@@ -25,7 +32,9 @@ class SettingsRepository(context: Context) {
             notifyOnUpdate = prefs.getBoolean(KEY_NOTIFY_UPDATE, true),
             unattendedMode = prefs.getBoolean(KEY_UNATTENDED, true),
             autoUpdateIntervalHours = prefs.getLong(KEY_INTERVAL, 12L),
-            darkTheme = prefs.getBoolean(KEY_DARK_THEME, true)
+            darkTheme = prefs.getBoolean(KEY_DARK_THEME, true),
+            themeMode = themeMode,
+            dynamicColors = prefs.getBoolean(KEY_DYNAMIC_COLORS, true)
         )
     }
 
@@ -37,7 +46,9 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_NOTIFY_UPDATE, newSettings.notifyOnUpdate)
             .putBoolean(KEY_UNATTENDED, newSettings.unattendedMode)
             .putLong(KEY_INTERVAL, newSettings.autoUpdateIntervalHours)
-            .putBoolean(KEY_DARK_THEME, newSettings.darkTheme)
+            .putBoolean(KEY_DARK_THEME, newSettings.themeMode != AppThemeMode.LIGHT)
+            .putString(KEY_THEME_MODE, newSettings.themeMode.name)
+            .putBoolean(KEY_DYNAMIC_COLORS, newSettings.dynamicColors)
             .apply()
         _settings.value = newSettings
     }
@@ -50,5 +61,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_UNATTENDED = "unattended_mode"
         private const val KEY_INTERVAL = "interval_hours"
         private const val KEY_DARK_THEME = "dark_theme"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_DYNAMIC_COLORS = "dynamic_colors"
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,27 +38,28 @@ fun HeroBanner(
     onActionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF2E1C66),
-                        Color(0xFF161932),
-                        Color(0xFF0F1224)
+        val colorScheme = MaterialTheme.colorScheme
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            colorScheme.primary.copy(alpha = 0.85f),
+                            Color(0xFF1D1842),
+                            Color(0xFF101324)
+                        )
                     )
                 )
-            )
-            .border(
-                1.dp,
-                Brush.linearGradient(listOf(NoxPrimary.copy(alpha = 0.5f), Color.Transparent)),
-                RoundedCornerShape(24.dp)
-            )
-            .clickable { onClick() }
-            .padding(20.dp)
-    ) {
+                .border(
+                    1.dp,
+                    Brush.linearGradient(listOf(colorScheme.primary.copy(alpha = 0.6f), Color.Transparent)),
+                    RoundedCornerShape(24.dp)
+                )
+                .clickable { onClick() }
+                .padding(20.dp)
+        ) {
         Column {
             // Category badge
             Box(
