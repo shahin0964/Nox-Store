@@ -2,7 +2,7 @@
   "storeName": "Nox Store",
   "version": 1,
   "description": "Central GitHub-Powered Open Registry for Nox Store",
-  "lastUpdated": "1795851324906",
+  "lastUpdated": "1795851439180",
   "apps": [
     {
       "id": "nox_store",
@@ -192,6 +192,34 @@
       "downloadUrl": "https:\/\/github.com\/shahin0964\/internet-Billing-Manager\/releases\/download\/v1.0.154\/ISP-Billing-Release.apk",
       "sizeBytes": 7120862,
       "githubRepo": "shahin0964\/internet-Billing-Manager",
+      "changelog": [
+        "Published via Nox Developer Studio"
+      ],
+      "minSdk": 26,
+      "targetSdk": 35,
+      "isFeatured": false,
+      "isSelfApp": false
+    },
+    {
+      "id": "com_smartdialer_app",
+      "packageName": "com.smartdialer.app",
+      "name": "Smart Dialer",
+      "developer": "Nox Studios",
+      "developerEmail": "md.shahin0962@gmail.com",
+      "developerWebsite": "",
+      "developerLocation": "Dhaka, Bangladesh",
+      "developerBio": "",
+      "category": "Communication",
+      "summary": "# 🚀 Smart Dialer v1.0.68",
+      "description": "# 🚀 Smart Dialer v1.0.68",
+      "iconUrl": "https:\/\/raw.githubusercontent.com\/shahin0964\/Smart-Dialer\/main\/app\/src\/main\/res\/mipmap-xxxhdpi\/ic_launcher.png",
+      "bannerUrl": "",
+      "screenshots": [],
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0.68",
+      "downloadUrl": "https:\/\/github.com\/shahin0964\/Smart-Dialer\/releases\/download\/v1.0.68\/SmartDialer-latest.apk",
+      "sizeBytes": 11735765,
+      "githubRepo": "shahin0964\/Smart-Dialer",
       "changelog": [
         "Published via Nox Developer Studio"
       ],
