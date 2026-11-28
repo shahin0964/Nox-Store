@@ -389,7 +389,7 @@ class DeveloperRepository(private val context: Context) {
 
     companion object {
         private const val TAG = "DeveloperRepository"
-        const val DEFAULT_CLIENT_ID = ""
+        const val DEFAULT_CLIENT_ID = "Ov23liT6ApYtO1ay4Mrk"
         private const val KEY_CLIENT_ID = "dev_oauth_client_id"
         private const val KEY_USERNAME = "dev_username"
         private const val KEY_DISPLAY_NAME = "dev_display_name"
