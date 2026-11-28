@@ -118,7 +118,8 @@ fun AppDetailScreen(
                 AppIcon(
                     iconUrl = app.iconUrl,
                     appName = app.name,
-                    sizeDp = 80
+                    sizeDp = 80,
+                    packageName = app.packageName
                 )
 
                 Spacer(modifier = Modifier.width(18.dp))

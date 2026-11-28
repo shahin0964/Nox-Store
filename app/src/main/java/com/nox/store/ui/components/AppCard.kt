@@ -32,7 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
 import com.nox.store.ui.theme.NoxAccentCyan
@@ -48,8 +51,20 @@ fun AppIcon(
     iconUrl: String,
     appName: String,
     modifier: Modifier = Modifier,
-    sizeDp: Int = 54
+    sizeDp: Int = 54,
+    packageName: String? = null
 ) {
+    val context = LocalContext.current
+    val installedDrawable = remember(packageName) {
+        if (!packageName.isNullOrBlank()) {
+            try {
+                context.packageManager.getApplicationIcon(packageName)
+            } catch (e: Exception) {
+                null
+            }
+        } else null
+    }
+
     val initial = appName.firstOrNull()?.uppercase() ?: "N"
     val gradientColors = when ((appName.hashCode() % 4 + 4) % 4) {
         0 -> listOf(Color(0xFF7C5CFC), Color(0xFF5B36F5))
@@ -57,6 +72,8 @@ fun AppIcon(
         2 -> listOf(Color(0xFFFF4081), Color(0xFFC2185B))
         else -> listOf(Color(0xFF00E5FF), Color(0xFF0097A7))
     }
+
+    val modelToLoad: Any? = installedDrawable ?: iconUrl.takeIf { it.isNotBlank() && !it.endsWith(".xml") }
 
     Box(
         modifier = modifier
@@ -66,14 +83,27 @@ fun AppIcon(
             .border(1.dp, NoxCardBorder.copy(alpha = 0.5f), RoundedCornerShape((sizeDp * 0.28).dp)),
         contentAlignment = Alignment.Center
     ) {
-        if (iconUrl.isNotBlank() && !iconUrl.endsWith(".xml")) {
-            AsyncImage(
-                model = iconUrl,
+        if (modelToLoad != null) {
+            SubcomposeAsyncImage(
+                model = modelToLoad,
                 contentDescription = appName,
                 modifier = Modifier
                     .size(sizeDp.dp)
                     .clip(RoundedCornerShape((sizeDp * 0.28).dp)),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                error = {
+                    Box(
+                        modifier = Modifier.size(sizeDp.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initial,
+                            color = Color.White,
+                            fontSize = (sizeDp * 0.44).sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             )
         } else {
             Text(
@@ -104,7 +134,7 @@ fun AppCardRow(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 52)
+        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 52, packageName = app.packageName)
 
         Spacer(modifier = Modifier.width(14.dp))
 
@@ -314,7 +344,7 @@ fun AppCardGridItem(
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 60)
+        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 60, packageName = app.packageName)
 
         Spacer(modifier = Modifier.height(6.dp))
 

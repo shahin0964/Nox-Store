@@ -403,11 +403,13 @@ class AppsRepository(private val context: Context) {
     }
 
     private fun detectInstalledVersion(app: AppItem): AppItem {
-        return try {
-            val pm = context.packageManager
+        val pm = context.packageManager
+        // 1. Try exact package name
+        try {
             val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 pm.getPackageInfo(app.packageName, PackageManager.PackageInfoFlags.of(0))
             } else {
+                @Suppress("DEPRECATION")
                 pm.getPackageInfo(app.packageName, 0)
             }
 
@@ -418,16 +420,55 @@ class AppsRepository(private val context: Context) {
                 packageInfo.versionCode
             }
 
-            app.copy(
+            return app.copy(
                 installedVersionCode = vCode,
                 installedVersionName = packageInfo.versionName
             )
         } catch (e: PackageManager.NameNotFoundException) {
-            app.copy(
-                installedVersionCode = null,
-                installedVersionName = null
-            )
+            // Not found by exact packageName, try fallback below
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking package info for ${app.packageName}", e)
         }
+
+        // 2. Fallback: Search all installed packages by app label or package sub-string
+        try {
+            val installedPackages = pm.getInstalledPackages(0)
+            val cleanAppName = app.name.replace(" ", "").replace("-", "").lowercase()
+
+            for (pkg in installedPackages) {
+                val pkgName = pkg.packageName.lowercase()
+                val label = try {
+                    pm.getApplicationLabel(pkg.applicationInfo).toString().trim().lowercase()
+                } catch (e: Exception) { "" }
+
+                val isMatch = (label.isNotBlank() && label == app.name.trim().lowercase()) ||
+                        (label.isNotBlank() && label == cleanAppName) ||
+                        (cleanAppName.length >= 4 && pkgName.contains(cleanAppName)) ||
+                        (app.githubRepo.isNotBlank() && pkgName.contains(app.githubRepo.substringAfter("/").replace("-", "").replace("_", "").lowercase()))
+
+                if (isMatch) {
+                    val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        pkg.longVersionCode.toInt()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        pkg.versionCode
+                    }
+                    Log.d(TAG, "Matched installed app '${app.name}' with actual package '${pkg.packageName}'")
+                    return app.copy(
+                        packageName = pkg.packageName,
+                        installedVersionCode = vCode,
+                        installedVersionName = pkg.versionName
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Fallback package detection error", e)
+        }
+
+        return app.copy(
+            installedVersionCode = null,
+            installedVersionName = null
+        )
     }
 
     private fun parseAppsJson(jsonString: String): List<AppItem> {

@@ -164,6 +164,7 @@ fun DeveloperStudioScreen(
     var isInspectingRepo by remember { mutableStateOf(false) }
     var showPublishSheet by remember { mutableStateOf(false) }
     var publishSuccessMsg by remember { mutableStateOf<String?>(null) }
+    var showStudioNameDialog by remember { mutableStateOf(false) }
 
     // Fetch repositories when developer is connected
     LaunchedEffect(developerProfile) {
@@ -278,6 +279,7 @@ fun DeveloperStudioScreen(
                 item {
                     DeveloperProfileCard(
                         profile = dev,
+                        onEditStudioName = { showStudioNameDialog = true },
                         onSignOut = { developerRepository.signOut() }
                     )
                     Spacer(modifier = Modifier.height(14.dp))
@@ -303,7 +305,12 @@ fun DeveloperStudioScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(text = "👑", fontSize = 24.sp)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
@@ -324,13 +331,15 @@ fun DeveloperStudioScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color(0xFFFFB300))
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                        .padding(horizontal = 14.dp, vertical = 7.dp)
                                 ) {
                                     Text(
                                         text = "Open",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp,
-                                        color = Color.Black
+                                        color = Color.Black,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 }
                             }
@@ -423,6 +432,10 @@ fun DeveloperStudioScreen(
     // Modal Sheet for Publishing the App
     if (showPublishSheet && selectedRepoPreview != null) {
         val preview = selectedRepoPreview!!
+        val defaultDevName = developerProfile?.studioName?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+            ?: developerProfile?.displayName?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+            ?: developerProfile?.username ?: "Nox Developer"
+        var appDevName by remember(preview, developerProfile) { mutableStateOf(defaultDevName) }
         var appTitle by remember(preview.appName) { mutableStateOf(preview.appName) }
         var appPkg by remember(preview.packageName) { mutableStateOf(preview.packageName) }
         var appSummary by remember(preview.summary) { mutableStateOf(preview.summary) }
@@ -526,6 +539,13 @@ fun DeveloperStudioScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Developer / Studio Name Field
+                Text(text = "Developer / Company Name", fontSize = 12.sp, color = TextMuted)
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicInputBox(value = appDevName, onValueChange = { appDevName = it })
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 // Package Name Field
                 Text(text = "Package Name", fontSize = 12.sp, color = TextMuted)
                 Spacer(modifier = Modifier.height(4.dp))
@@ -580,7 +600,7 @@ fun DeveloperStudioScreen(
                                     id = appPkg.replace(".", "_"),
                                     packageName = appPkg,
                                     name = appTitle,
-                                    developer = developerProfile?.displayName ?: "Nox Developer",
+                                    developer = appDevName.ifBlank { developerProfile?.displayName ?: "Nox Developer" },
                                     category = selectedCategory,
                                     summary = appSummary,
                                     description = appSummary,
@@ -802,6 +822,55 @@ fun DeveloperStudioScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClientIdDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            },
+            containerColor = NoxCard
+        )
+    }
+
+    // Developer Studio / Company Name Dialog
+    if (showStudioNameDialog && developerProfile != null) {
+        val currentProfile = developerProfile!!
+        var tempStudioName by remember(currentProfile.studioName) {
+            mutableStateOf(currentProfile.studioName)
+        }
+        AlertDialog(
+            onDismissRequest = { showStudioNameDialog = false },
+            title = {
+                Text(
+                    text = "Developer / Company Name",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Set your official developer studio or company name (e.g. 'Nox Studios', 'Metro Telecom'). This name will appear on apps you publish to Nox Store.",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    BasicInputBox(
+                        value = tempStudioName,
+                        onValueChange = { tempStudioName = it },
+                        placeholder = "e.g. Nox Studios"
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        developerRepository.setStudioName(tempStudioName)
+                        showStudioNameDialog = false
+                    }
+                ) {
+                    Text("Save", color = NoxAccentCyan, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStudioNameDialog = false }) {
                     Text("Cancel", color = TextMuted)
                 }
             },
@@ -1035,6 +1104,7 @@ fun DeveloperOnboardingCard(
 @Composable
 fun DeveloperProfileCard(
     profile: DeveloperProfile,
+    onEditStudioName: () -> Unit,
     onSignOut: () -> Unit
 ) {
     Box(
@@ -1046,7 +1116,7 @@ fun DeveloperProfileCard(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (profile.avatarUrl.isNotBlank()) {
+            if (profile.avatarUrl.isNotBlank() && !profile.avatarUrl.equals("null", ignoreCase = true)) {
                 AsyncImage(
                     model = profile.avatarUrl,
                     contentDescription = profile.username,
@@ -1075,8 +1145,13 @@ fun DeveloperProfileCard(
             Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val cleanDisplay = if (profile.displayName.isNotBlank() && !profile.displayName.equals("null", ignoreCase = true)) {
+                    profile.displayName
+                } else {
+                    profile.username
+                }
                 Text(
-                    text = profile.displayName,
+                    text = cleanDisplay,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1114,8 +1189,34 @@ fun DeveloperProfileCard(
                         )
                     }
                 }
-                if (profile.bio.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Studio / Brand Name Chip with edit action
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(NoxCardBorder.copy(alpha = 0.6f))
+                        .clickable { onEditStudioName() }
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(text = "🏢", fontSize = 11.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (profile.studioName.isNotBlank() && !profile.studioName.equals("null", ignoreCase = true)) {
+                            profile.studioName
+                        } else {
+                            "Set Studio / Brand"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (profile.studioName.isNotBlank()) NoxAccentCyan else TextMuted
+                    )
+                }
+
+                if (profile.bio.isNotBlank() && !profile.bio.equals("null", ignoreCase = true)) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = profile.bio,
                         fontSize = 11.sp,
@@ -1165,7 +1266,7 @@ fun GitHubRepoCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            if (repo.description.isNotBlank()) {
+            if (repo.description.isNotBlank() && !repo.description.equals("null", ignoreCase = true)) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = repo.description,

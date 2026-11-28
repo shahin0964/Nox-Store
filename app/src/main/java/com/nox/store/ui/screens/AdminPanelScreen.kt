@@ -425,7 +425,7 @@ fun AdminAppRow(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 44)
+        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 44, packageName = app.packageName)
 
         Spacer(modifier = Modifier.width(12.dp))
 

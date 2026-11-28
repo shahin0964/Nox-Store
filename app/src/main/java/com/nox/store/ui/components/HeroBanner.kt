@@ -105,7 +105,7 @@ fun HeroBanner(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 64)
+                AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 64, packageName = app.packageName)
             }
 
             Spacer(modifier = Modifier.height(16.dp))

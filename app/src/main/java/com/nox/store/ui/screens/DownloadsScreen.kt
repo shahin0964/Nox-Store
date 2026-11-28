@@ -155,7 +155,8 @@ fun DownloadsScreen(
                                         AppIcon(
                                             iconUrl = app?.iconUrl ?: "",
                                             appName = appName,
-                                            sizeDp = 42
+                                            sizeDp = 42,
+                                            packageName = app?.packageName
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column(modifier = Modifier.weight(1f)) {
@@ -196,7 +197,7 @@ fun DownloadsScreen(
 
                             is DownloadState.Connecting -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42)
+                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42, packageName = app?.packageName)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -216,7 +217,7 @@ fun DownloadsScreen(
 
                             is DownloadState.Installing -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42)
+                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42, packageName = app?.packageName)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -236,7 +237,7 @@ fun DownloadsScreen(
 
                             is DownloadState.Installed -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42)
+                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42, packageName = app?.packageName)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -256,7 +257,7 @@ fun DownloadsScreen(
 
                             is DownloadState.Failed -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42)
+                                    AppIcon(iconUrl = app?.iconUrl ?: "", appName = appName, sizeDp = 42, packageName = app?.packageName)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(

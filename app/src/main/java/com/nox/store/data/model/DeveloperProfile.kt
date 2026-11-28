@@ -3,6 +3,7 @@ package com.nox.store.data.model
 data class DeveloperProfile(
     val username: String,
     val displayName: String = "",
+    val studioName: String = "",
     val avatarUrl: String = "",
     val bio: String = "",
     val publicRepos: Int = 0,
