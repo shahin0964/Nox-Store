@@ -2,7 +2,7 @@
   "storeName": "Nox Store",
   "version": 1,
   "description": "Central GitHub-Powered Open Registry for Nox Store",
-  "lastUpdated": "1795841232410",
+  "lastUpdated": "1795851324906",
   "apps": [
     {
       "id": "nox_store",
@@ -200,5 +200,10 @@
       "isFeatured": false,
       "isSelfApp": false
     }
-  ]
+  ],
+  "storeNotice": {
+    "title": "STORE ANNOUNCEMENT",
+    "message": "কোথাও প্রবলেম হলে আমাকে জানাবেন",
+    "type": "WARNING"
+  }
 }
