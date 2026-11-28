@@ -2,7 +2,7 @@
   "storeName": "Nox Store",
   "version": 1,
   "description": "Central GitHub-Powered Open Registry for Nox Store",
-  "lastUpdated": "1795841206186",
+  "lastUpdated": "1795841216399",
   "apps": [
     {
       "id": "nox_store",
@@ -120,6 +120,30 @@
       "downloadUrl": "https:\/\/github.com\/shahin0964\/Kisti\/releases\/download\/v1.0.7\/app-release.apk",
       "sizeBytes": 52398672,
       "githubRepo": "shahin0964\/Kisti",
+      "changelog": [
+        "Published via Nox Developer Studio"
+      ],
+      "minSdk": 26,
+      "targetSdk": 35,
+      "isFeatured": false,
+      "isSelfApp": false
+    },
+    {
+      "id": "com_shahin0964_internetbillingmanager2",
+      "packageName": "com.shahin0964.internetbillingmanager2",
+      "name": "INTERNET BILLING MANAGER2",
+      "developer": "null",
+      "category": "Tools",
+      "summary": "📱 INTERNET BILLING MANAGER (IBM) - v1.0.62",
+      "description": "📱 INTERNET BILLING MANAGER (IBM) - v1.0.62",
+      "iconUrl": "https:\/\/raw.githubusercontent.com\/shahin0964\/INTERNET-BILLING-MANAGER2\/main\/app\/src\/main\/res\/mipmap-xxxhdpi\/ic_launcher.png",
+      "bannerUrl": "",
+      "screenshots": [],
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0.82",
+      "downloadUrl": "https:\/\/github.com\/shahin0964\/INTERNET-BILLING-MANAGER2\/releases\/download\/v1.0.82\/IBM-latest.apk",
+      "sizeBytes": 14551836,
+      "githubRepo": "shahin0964\/INTERNET-BILLING-MANAGER2",
       "changelog": [
         "Published via Nox Developer Studio"
       ],
