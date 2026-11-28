@@ -63,230 +63,236 @@ fun UpdatesScreen(
     val pendingUpdates = apps.filter { it.hasUpdate }
     val upToDateApps = apps.filter { it.isInstalled && !it.hasUpdate }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 100.dp)
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // Header Row
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "App Updates",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+        // Fixed / Sticky Header Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "App Updates",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = "${pendingUpdates.size} updates pending",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(NoxCard)
-                        .border(1.dp, NoxCardBorder, RoundedCornerShape(14.dp))
-                        .clickable(enabled = !isRefreshing) { onRefresh() }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isRefreshing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = NoxAccentCyan,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Refresh,
-                                contentDescription = "Check for updates",
-                                tint = NoxAccentCyan,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Check now",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = NoxAccentCyan
-                            )
-                        }
-                    }
-                }
+                )
+                Text(
+                    text = "${pendingUpdates.size} updates pending",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
             }
-        }
 
-        // Automatic Background Update Banner
-        item {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(NoxCard)
-                    .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
-                    .padding(14.dp)
+                    .border(1.dp, NoxCardBorder, RoundedCornerShape(14.dp))
+                    .clickable(enabled = !isRefreshing) { onRefresh() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(NoxInstallGreen.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
+                if (isRefreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = NoxAccentCyan,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Security,
-                            contentDescription = null,
-                            tint = NoxInstallGreen,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Automatic Updates Active",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = "Check for updates",
+                            tint = NoxAccentCyan,
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Android 12+ unattended background updates enabled.",
-                            fontSize = 11.sp,
-                            color = TextMuted
+                            text = "Check now",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = NoxAccentCyan
                         )
                     }
                 }
             }
         }
 
-        // Action: Update All Button
-        if (pendingUpdates.isNotEmpty()) {
+        // Scrollable content
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
+            // Automatic Background Update Banner
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .padding(horizontal = 20.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(NoxCard)
+                        .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+                        .padding(14.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(NoxUpdateBlue)
-                            .clickable { onUpdateAll() }
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(NoxInstallGreen.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
-                                imageVector = Icons.Rounded.SystemUpdate,
+                                imageVector = Icons.Rounded.Security,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Update All (${pendingUpdates.size})",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                tint = NoxInstallGreen,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
-                        val totalUpdateSize = pendingUpdates.sumOf { it.sizeBytes }
-                        Text(
-                            text = "${(totalUpdateSize / (1024 * 1024))} MB total",
-                            color = Color(0xFFD4E3FC),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Automatic Updates Active",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Android 12+ unattended background updates enabled.",
+                                fontSize = 11.sp,
+                                color = TextMuted
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // Pending Updates Section
-        if (pendingUpdates.isNotEmpty()) {
-            item {
-                SectionHeader(title = "Updates Available (${pendingUpdates.size})")
-            }
+            // Action: Update All Button
+            if (pendingUpdates.isNotEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(NoxUpdateBlue)
+                                .clickable { onUpdateAll() }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Update All (${pendingUpdates.size})",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
 
-            items(pendingUpdates) { app ->
-                val state = downloadStates[app.packageName] ?: DownloadState.Idle
-                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
-                    AppCardRow(
-                        app = app,
-                        downloadState = state,
-                        onClick = { onAppClick(app) },
-                        onActionClick = { onUpdateApp(app) }
-                    )
-                }
-            }
-        } else {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 30.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
-                            contentDescription = null,
-                            tint = NoxInstallGreen,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "All Apps are Up to Date",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "No updates pending right now.",
-                            fontSize = 12.sp,
-                            color = TextMuted
-                        )
+                            val totalUpdateSize = pendingUpdates.sumOf { it.sizeBytes }
+                            Text(
+                                text = "${(totalUpdateSize / (1024 * 1024))} MB total",
+                                color = Color(0xFFD4E3FC),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // Up to date installed apps
-        if (upToDateApps.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader(title = "Recently Updated & Installed (${upToDateApps.size})")
+            // Pending Updates Section
+            if (pendingUpdates.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "Updates Available (${pendingUpdates.size})")
+                }
+
+                items(pendingUpdates) { app ->
+                    val state = downloadStates[app.packageName] ?: DownloadState.Idle
+                    Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                        AppCardRow(
+                            app = app,
+                            downloadState = state,
+                            onClick = { onAppClick(app) },
+                            onActionClick = { onUpdateApp(app) }
+                        )
+                    }
+                }
+            } else {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 30.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = NoxInstallGreen,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "All Apps are Up to Date",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "No updates pending right now.",
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
             }
 
-            items(upToDateApps) { app ->
-                val state = downloadStates[app.packageName] ?: DownloadState.Idle
-                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
-                    AppCardRow(
-                        app = app,
-                        downloadState = state,
-                        onClick = { onAppClick(app) },
-                        onActionClick = { onAppClick(app) }
-                    )
+            // Up to date installed apps
+            if (upToDateApps.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SectionHeader(title = "Recently Updated & Installed (${upToDateApps.size})")
+                }
+
+                items(upToDateApps) { app ->
+                    val state = downloadStates[app.packageName] ?: DownloadState.Idle
+                    Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                        AppCardRow(
+                            app = app,
+                            downloadState = state,
+                            onClick = { onAppClick(app) },
+                            onActionClick = { onAppClick(app) }
+                        )
+                    }
                 }
             }
         }

@@ -1,7 +1,6 @@
 package com.nox.store.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -28,8 +26,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -43,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -57,7 +54,6 @@ import com.nox.store.ui.theme.NoxInstallGreen
 import com.nox.store.ui.theme.NoxPrimary
 import com.nox.store.ui.theme.NoxUpdateBlue
 import com.nox.store.ui.theme.TextMuted
-import com.nox.store.ui.theme.TextWhite
 
 @Composable
 fun AppDetailScreen(
@@ -148,33 +144,69 @@ fun AppDetailScreen(
                             fontWeight = FontWeight.Medium,
                             color = NoxAccentCyan
                         )
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
-                            contentDescription = "Verified Developer",
-                            tint = NoxAccentCyan,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        if (app.isDevVerified || app.isSelfApp) {
+                            Icon(
+                                imageVector = Icons.Rounded.Verified,
+                                contentDescription = "Verified Developer",
+                                tint = if (app.isSelfApp) Color(0xFFFFB300) else NoxAccentCyan,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (app.isSelfApp) Color(0xFFFFB300).copy(alpha = 0.2f)
+                                        else NoxAccentCyan.copy(alpha = 0.15f)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (app.isSelfApp) "Store Founder" else app.devBadgeLevel,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (app.isSelfApp) Color(0xFFFFB300) else NoxAccentCyan
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(NoxCard)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = app.category,
-                            fontSize = 11.sp,
-                            color = TextMuted
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(NoxCard)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = app.category,
+                                fontSize = 11.sp,
+                                color = TextMuted
+                            )
+                        }
+
+                        if (app.isSelfApp) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(NoxPrimary.copy(alpha = 0.25f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "SELF-UPDATE ACTIVE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NoxAccentCyan
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Stats Pillars: Rating, Size, Downloads
+        // Real Stats Pillars: Stars, Download Size, Real Downloads
         item {
             Row(
                 modifier = Modifier
@@ -183,25 +215,25 @@ fun AppDetailScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Rating
+                // Real Stars
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "${app.rating}",
+                            text = app.formattedRating,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFB300),
-                            modifier = Modifier.size(13.dp)
+                            tint = if (app.realStars > 0) Color(0xFFFFB300) else TextMuted,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                     Text(
-                        text = "${app.reviewsCount} reviews",
+                        text = if (app.realStars > 0) "${app.realStars} GitHub Stars" else "Community App",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
@@ -219,11 +251,11 @@ fun AppDetailScreen(
                     Text(
                         text = app.formattedSize,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Download size",
+                        text = "Download Size",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
@@ -236,16 +268,16 @@ fun AppDetailScreen(
                         .background(NoxCardBorder)
                 )
 
-                // Downloads
+                // Real Downloads
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = app.downloadsCount,
+                        text = app.formattedDownloads,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Downloads",
+                        text = "Total Downloads",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
@@ -346,7 +378,7 @@ fun AppDetailScreen(
                                     strokeWidth = 2.dp
                                 )
                                 Text(
-                                    text = "Connecting to repository...",
+                                    text = "Connecting to CDN...",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = NoxPrimary
@@ -375,6 +407,7 @@ fun AppDetailScreen(
 
                     else -> {
                         val (btnText, btnColor) = when {
+                            app.isSelfApp && app.hasUpdate -> "Update Nox Store to v${app.latestVersionName}" to NoxUpdateBlue
                             app.hasUpdate -> "Update to v${app.latestVersionName}" to NoxUpdateBlue
                             app.isInstalled -> "Open Application" to NoxPrimary
                             else -> "Install" to NoxInstallGreen
@@ -558,6 +591,9 @@ fun AppDetailScreen(
                 SpecRow(label = "Minimum Android", value = "Android 8.0 (API ${app.minSdk})")
                 SpecRow(label = "Target Android", value = "Android 15 (API ${app.targetSdk})")
                 SpecRow(label = "Silent Updates", value = "Supported (Android 12+)")
+                if (app.githubRepo != null) {
+                    SpecRow(label = "Source Repository", value = app.githubRepo)
+                }
             }
         }
     }

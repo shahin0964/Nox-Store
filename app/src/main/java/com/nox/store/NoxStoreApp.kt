@@ -1,7 +1,9 @@
 package com.nox.store
 
 import android.app.Application
+import com.nox.store.data.repository.AdminRepository
 import com.nox.store.data.repository.AppsRepository
+import com.nox.store.data.repository.DeveloperRepository
 import com.nox.store.data.repository.DownloadManager
 import com.nox.store.data.repository.SettingsRepository
 import com.nox.store.worker.AutoUpdateWorker
@@ -18,11 +20,19 @@ class NoxStoreApp : Application() {
     lateinit var downloadManager: DownloadManager
         private set
 
+    lateinit var developerRepository: DeveloperRepository
+        private set
+
+    lateinit var adminRepository: AdminRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
         instance = this
 
         settingsRepository = SettingsRepository(this)
+        adminRepository = AdminRepository(this)
+        developerRepository = DeveloperRepository(this)
         appsRepository = AppsRepository(this)
         downloadManager = DownloadManager(this)
 

@@ -41,7 +41,9 @@ class MainActivity : ComponentActivity() {
                 MainScaffold(
                     appsRepository = app.appsRepository,
                     downloadManager = app.downloadManager,
-                    settingsRepository = app.settingsRepository
+                    settingsRepository = app.settingsRepository,
+                    developerRepository = app.developerRepository,
+                    adminRepository = app.adminRepository
                 )
             }
         }

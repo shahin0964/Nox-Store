@@ -1,6 +1,7 @@
 package com.nox.store.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -44,11 +44,16 @@ fun HeroBanner(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF281C5A),
-                        Color(0xFF141628),
-                        Color(0xFF0F1528)
+                        Color(0xFF2E1C66),
+                        Color(0xFF161932),
+                        Color(0xFF0F1224)
                     )
                 )
+            )
+            .border(
+                1.dp,
+                Brush.linearGradient(listOf(NoxPrimary.copy(alpha = 0.5f), Color.Transparent)),
+                RoundedCornerShape(24.dp)
             )
             .clickable { onClick() }
             .padding(20.dp)
@@ -62,7 +67,7 @@ fun HeroBanner(
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "FEATURED • ${app.category.uppercase()}",
+                    text = if (app.isSelfApp) "FEATURED • NOX STORE" else "FEATURED • ${app.category.uppercase()}",
                     color = NoxAccentCyan,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -112,7 +117,7 @@ fun HeroBanner(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${app.rating} ★ • ${app.formattedSize}",
+                    text = "${app.formattedRating} ★ • ${app.formattedDownloads} dl • ${app.formattedSize}",
                     color = Color(0xFFA2A5BE),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium

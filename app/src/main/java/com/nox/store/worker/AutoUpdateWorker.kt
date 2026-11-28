@@ -30,9 +30,9 @@ class AutoUpdateWorker(
             return Result.success()
         }
 
-        // Refresh installed packages and catalog
+        // Refresh installed packages and sync real releases from GitHub
         appsRepo.refreshInstalledStatus()
-        appsRepo.fetchRemoteCatalog(settings.repoUrl)
+        appsRepo.syncAllFromGitHub()
 
         val apps = appsRepo.apps.value
         val updates = apps.filter { it.hasUpdate }

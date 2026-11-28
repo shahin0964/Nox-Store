@@ -2,9 +2,6 @@ package com.nox.store.ui.screens
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,7 +17,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
@@ -50,7 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nox.store.data.model.AppItem
 import com.nox.store.data.model.DownloadState
+import com.nox.store.data.repository.AdminRepository
 import com.nox.store.data.repository.AppsRepository
+import com.nox.store.data.repository.DeveloperRepository
 import com.nox.store.data.repository.DownloadManager
 import com.nox.store.data.repository.SettingsRepository
 import com.nox.store.ui.theme.NoxAccentPink
@@ -71,6 +69,8 @@ fun MainScaffold(
     appsRepository: AppsRepository,
     downloadManager: DownloadManager,
     settingsRepository: SettingsRepository,
+    developerRepository: DeveloperRepository,
+    adminRepository: AdminRepository,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -78,15 +78,24 @@ fun MainScaffold(
     val isRefreshing by appsRepository.isRefreshing.collectAsState()
     val downloadStates by downloadManager.downloadStates.collectAsState()
     val settings by settingsRepository.settings.collectAsState()
+    val storeNotice by adminRepository.storeNotice.collectAsState()
 
     var currentTab by remember { mutableStateOf(StoreTab.HOME) }
     var selectedAppDetail by remember { mutableStateOf<AppItem?>(null) }
+    var showDeveloperStudio by remember { mutableStateOf(false) }
+    var showAdminPanel by remember { mutableStateOf(false) }
 
     val updatesCount = apps.count { it.hasUpdate }
 
-    // Intercept back button if viewing app detail
-    BackHandler(enabled = selectedAppDetail != null) {
-        selectedAppDetail = null
+    // Intercept back button
+    BackHandler(enabled = selectedAppDetail != null || showDeveloperStudio || showAdminPanel) {
+        if (showAdminPanel) {
+            showAdminPanel = false
+        } else if (selectedAppDetail != null) {
+            selectedAppDetail = null
+        } else if (showDeveloperStudio) {
+            showDeveloperStudio = false
+        }
     }
 
     val handleAppAction: (AppItem) -> Unit = { app ->
@@ -113,7 +122,7 @@ fun MainScaffold(
             .statusBarsPadding()
             .navigationBarsPadding(),
         bottomBar = {
-            if (selectedAppDetail == null) {
+            if (selectedAppDetail == null && !showDeveloperStudio && !showAdminPanel) {
                 StoreBottomNav(
                     currentTab = currentTab,
                     updatesCount = updatesCount,
@@ -128,6 +137,23 @@ fun MainScaffold(
                 .padding(paddingValues)
         ) {
             when {
+                showAdminPanel -> {
+                    AdminPanelScreen(
+                        adminRepository = adminRepository,
+                        appsRepository = appsRepository,
+                        onBackClick = { showAdminPanel = false }
+                    )
+                }
+
+                showDeveloperStudio -> {
+                    DeveloperStudioScreen(
+                        developerRepository = developerRepository,
+                        appsRepository = appsRepository,
+                        onBackClick = { showDeveloperStudio = false },
+                        onOpenAdminPanel = { showAdminPanel = true }
+                    )
+                }
+
                 selectedAppDetail != null -> {
                     val app = selectedAppDetail!!
                     val currentAppInList = apps.firstOrNull { it.packageName == app.packageName } ?: app
@@ -148,7 +174,9 @@ fun MainScaffold(
                         downloadStates = downloadStates,
                         onAppClick = { selectedAppDetail = it },
                         onAppAction = handleAppAction,
-                        onNavigateToUpdates = { currentTab = StoreTab.UPDATES }
+                        onNavigateToUpdates = { currentTab = StoreTab.UPDATES },
+                        onProfileClick = { showDeveloperStudio = true },
+                        adminNotice = storeNotice
                     )
                 }
 
@@ -159,7 +187,7 @@ fun MainScaffold(
                         isRefreshing = isRefreshing,
                         onRefresh = {
                             appsRepository.refreshInstalledStatus()
-                            appsRepository.fetchRemoteCatalog(settings.repoUrl)
+                            appsRepository.fetchRemoteCentralRegistry()
                         },
                         onAppClick = { selectedAppDetail = it },
                         onUpdateApp = handleAppAction,
@@ -188,11 +216,7 @@ fun MainScaffold(
                 currentTab == StoreTab.SETTINGS -> {
                     SettingsScreen(
                         settings = settings,
-                        onSettingsChanged = { settingsRepository.updateSettings(it) },
-                        onSyncNow = {
-                            appsRepository.refreshInstalledStatus()
-                            appsRepository.fetchRemoteCatalog(settings.repoUrl)
-                        }
+                        onSettingsChanged = { settingsRepository.updateSettings(it) }
                     )
                 }
             }

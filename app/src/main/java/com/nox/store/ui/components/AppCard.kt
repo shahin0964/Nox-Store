@@ -13,13 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,44 +42,44 @@ import com.nox.store.ui.theme.NoxInstallGreen
 import com.nox.store.ui.theme.NoxPrimary
 import com.nox.store.ui.theme.NoxUpdateBlue
 import com.nox.store.ui.theme.TextMuted
-import com.nox.store.ui.theme.TextWhite
 
 @Composable
 fun AppIcon(
     iconUrl: String,
     appName: String,
     modifier: Modifier = Modifier,
-    sizeDp: Int = 56
+    sizeDp: Int = 54
 ) {
     val initial = appName.firstOrNull()?.uppercase() ?: "N"
     val gradientColors = when ((appName.hashCode() % 4 + 4) % 4) {
-        0 -> listOf(Color(0xFF7C5CFC), Color(0xFF6366F1))
-        1 -> listOf(Color(0xFF00C853), Color(0xFF00B0FF))
-        2 -> listOf(Color(0xFFFF4081), Color(0xFFFF6E40))
-        else -> listOf(Color(0xFF00E5FF), Color(0xFF7C5CFC))
+        0 -> listOf(Color(0xFF7C5CFC), Color(0xFF5B36F5))
+        1 -> listOf(Color(0xFF00C853), Color(0xFF009688))
+        2 -> listOf(Color(0xFFFF4081), Color(0xFFC2185B))
+        else -> listOf(Color(0xFF00E5FF), Color(0xFF0097A7))
     }
 
     Box(
         modifier = modifier
             .size(sizeDp.dp)
-            .clip(RoundedCornerShape((sizeDp * 0.25).dp))
-            .background(Brush.linearGradient(gradientColors)),
+            .clip(RoundedCornerShape((sizeDp * 0.28).dp))
+            .background(Brush.linearGradient(gradientColors))
+            .border(1.dp, NoxCardBorder.copy(alpha = 0.5f), RoundedCornerShape((sizeDp * 0.28).dp)),
         contentAlignment = Alignment.Center
     ) {
-        if (iconUrl.isNotBlank()) {
+        if (iconUrl.isNotBlank() && !iconUrl.endsWith(".xml")) {
             AsyncImage(
                 model = iconUrl,
                 contentDescription = appName,
                 modifier = Modifier
                     .size(sizeDp.dp)
-                    .clip(RoundedCornerShape((sizeDp * 0.25).dp)),
+                    .clip(RoundedCornerShape((sizeDp * 0.28).dp)),
                 contentScale = ContentScale.Crop
             )
         } else {
             Text(
                 text = initial,
                 color = Color.White,
-                fontSize = (sizeDp * 0.42).sp,
+                fontSize = (sizeDp * 0.44).sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -100,29 +97,48 @@ fun AppCardRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(NoxCard)
-            .border(1.dp, NoxCardBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, NoxCardBorder, RoundedCornerShape(18.dp))
             .clickable { onClick() }
-            .padding(14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 54)
+        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 52)
 
         Spacer(modifier = Modifier.width(14.dp))
 
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            Text(
-                text = app.name,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = app.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (app.isSelfApp) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(NoxPrimary.copy(alpha = 0.25f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "STORE",
+                            color = NoxAccentCyan,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(2.dp))
 
@@ -135,34 +151,40 @@ fun AppCardRow(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Real stats row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Rating
+                // Real Stars
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
-                        contentDescription = "Rating",
-                        tint = Color(0xFFFFB300),
-                        modifier = Modifier.size(13.dp)
+                        contentDescription = "Stars",
+                        tint = if (app.realStars > 0) Color(0xFFFFB300) else TextMuted,
+                        modifier = Modifier.size(12.dp)
                     )
                     Text(
-                        text = "${app.rating}",
+                        text = app.formattedRating,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
+                Text(text = "•", fontSize = 10.sp, color = TextMuted)
+
+                // Real Downloads
                 Text(
-                    text = "•",
-                    fontSize = 10.sp,
+                    text = "${app.formattedDownloads} dl",
+                    fontSize = 11.sp,
                     color = TextMuted
                 )
+
+                Text(text = "•", fontSize = 10.sp, color = TextMuted)
 
                 // Size
                 Text(
@@ -172,22 +194,18 @@ fun AppCardRow(
                 )
 
                 if (app.hasUpdate) {
-                    Text(
-                        text = "•",
-                        fontSize = 10.sp,
-                        color = TextMuted
-                    )
+                    Text(text = "•", fontSize = 10.sp, color = TextMuted)
                     Text(
                         text = "v${app.latestVersionName}",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                         color = NoxAccentCyan
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         AppActionButton(
             app = app,
@@ -214,7 +232,7 @@ fun AppActionButton(
             ) {
                 CircularProgressIndicator(
                     progress = { downloadState.progress },
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(34.dp),
                     color = NoxAccentCyan,
                     strokeWidth = 3.dp
                 )
@@ -233,9 +251,9 @@ fun AppActionButton(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(22.dp),
                     color = NoxPrimary,
-                    strokeWidth = 2.5.dp
+                    strokeWidth = 2.dp
                 )
             }
         }
@@ -275,7 +293,7 @@ fun AppActionButton(
                 Text(
                     text = buttonText,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = textColor
                 )
             }
@@ -291,19 +309,19 @@ fun AppCardGridItem(
 ) {
     Column(
         modifier = modifier
-            .width(100.dp)
+            .width(96.dp)
             .clickable { onClick() }
-            .padding(4.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 64)
+        AppIcon(iconUrl = app.iconUrl, appName = app.name, sizeDp = 60)
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = app.name,
             style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             ),
             maxLines = 1,
@@ -319,11 +337,11 @@ fun AppCardGridItem(
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = null,
-                tint = Color(0xFFFFB300),
+                tint = if (app.realStars > 0) Color(0xFFFFB300) else TextMuted,
                 modifier = Modifier.size(11.dp)
             )
             Text(
-                text = "${app.rating}",
+                text = app.formattedRating,
                 fontSize = 10.sp,
                 color = TextMuted
             )

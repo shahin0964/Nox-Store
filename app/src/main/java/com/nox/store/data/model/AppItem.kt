@@ -1,6 +1,5 @@
 package com.nox.store.data.model
 
-import java.io.File
 import java.text.DecimalFormat
 
 data class AppItem(
@@ -20,14 +19,17 @@ data class AppItem(
     val installedVersionName: String? = null,
     val downloadUrl: String,
     val sizeBytes: Long = 0L,
-    val rating: Float = 4.8f,
-    val reviewsCount: String = "1.2K",
-    val downloadsCount: String = "10K+",
+    val realStars: Int = 0,
+    val realDownloads: Long = 0L,
+    val githubRepo: String? = null,
     val changelog: List<String> = emptyList(),
     val minSdk: Int = 26,
     val targetSdk: Int = 35,
     val isFeatured: Boolean = false,
-    val releaseDate: String = "Nov 2026"
+    val isSelfApp: Boolean = false,
+    val isDevVerified: Boolean = false,
+    val devBadgeLevel: String = "Starter",
+    val releaseDate: String = "Recent"
 ) {
     val isInstalled: Boolean
         get() = installedVersionCode != null
@@ -37,12 +39,27 @@ data class AppItem(
 
     val formattedSize: String
         get() {
-            if (sizeBytes <= 0) return "15 MB"
+            if (sizeBytes <= 0) return "-- MB"
             val mb = sizeBytes / (1024.0 * 1024.0)
             return if (mb < 1.0) {
                 "${sizeBytes / 1024} KB"
             } else {
                 "${DecimalFormat("#.#").format(mb)} MB"
             }
+        }
+
+    val formattedDownloads: String
+        get() {
+            return when {
+                realDownloads <= 0 -> "New"
+                realDownloads < 1000 -> "$realDownloads"
+                realDownloads < 1_000_000 -> "${DecimalFormat("#.#").format(realDownloads / 1000.0)}K"
+                else -> "${DecimalFormat("#.#").format(realDownloads / 1_000_000.0)}M"
+            }
+        }
+
+    val formattedRating: String
+        get() {
+            return if (realStars > 0) "$realStars" else "New"
         }
 }
