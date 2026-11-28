@@ -2,7 +2,7 @@
   "storeName": "Nox Store",
   "version": 1,
   "description": "Central GitHub-Powered Open Registry for Nox Store",
-  "lastUpdated": "1795841226263",
+  "lastUpdated": "1795841232410",
   "apps": [
     {
       "id": "nox_store",
@@ -168,6 +168,30 @@
       "downloadUrl": "https:\/\/github.com\/shahin0964\/Nirvor\/releases\/download\/v2.1.36\/Nirvor-latest.apk",
       "sizeBytes": 146541408,
       "githubRepo": "shahin0964\/Nirvor",
+      "changelog": [
+        "Published via Nox Developer Studio"
+      ],
+      "minSdk": 26,
+      "targetSdk": 35,
+      "isFeatured": false,
+      "isSelfApp": false
+    },
+    {
+      "id": "com_shahin0964_internetbillingmanager",
+      "packageName": "com.shahin0964.internetbillingmanager",
+      "name": "Internet Billing Manager",
+      "developer": "null",
+      "category": "Tools",
+      "summary": "What's New in 1.0.154",
+      "description": "What's New in 1.0.154",
+      "iconUrl": "https:\/\/raw.githubusercontent.com\/shahin0964\/internet-Billing-Manager\/main\/app\/src\/main\/res\/mipmap-xxxhdpi\/ic_launcher.png",
+      "bannerUrl": "",
+      "screenshots": [],
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0.154",
+      "downloadUrl": "https:\/\/github.com\/shahin0964\/internet-Billing-Manager\/releases\/download\/v1.0.154\/ISP-Billing-Release.apk",
+      "sizeBytes": 7120862,
+      "githubRepo": "shahin0964\/internet-Billing-Manager",
       "changelog": [
         "Published via Nox Developer Studio"
       ],
