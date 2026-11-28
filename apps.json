@@ -2,7 +2,7 @@
   "storeName": "Nox Store",
   "version": 1,
   "description": "Central GitHub-Powered Open Registry for Nox Store",
-  "lastUpdated": "1795841186811",
+  "lastUpdated": "1795841195750",
   "apps": [
     {
       "id": "nox_store",
@@ -72,6 +72,30 @@
       "downloadUrl": "https:\/\/github.com\/shahin0964\/Metro-Telecom\/releases\/download\/v1.0.4\/Metro-Telecom.apk",
       "sizeBytes": 53209705,
       "githubRepo": "shahin0964\/Metro-Telecom",
+      "changelog": [
+        "Published via Nox Developer Studio"
+      ],
+      "minSdk": 26,
+      "targetSdk": 35,
+      "isFeatured": false,
+      "isSelfApp": false
+    },
+    {
+      "id": "com_shahin0964_smartmessages",
+      "packageName": "com.shahin0964.smartmessages",
+      "name": "Smart Messages",
+      "developer": "null",
+      "category": "Communication",
+      "summary": "# 💬 Smart Messages v1.0.12",
+      "description": "# 💬 Smart Messages v1.0.12",
+      "iconUrl": "https:\/\/raw.githubusercontent.com\/shahin0964\/Smart-Messages\/main\/app\/src\/main\/res\/mipmap-xxxhdpi\/ic_launcher.png",
+      "bannerUrl": "",
+      "screenshots": [],
+      "latestVersionCode": 1,
+      "latestVersionName": "1.0.12",
+      "downloadUrl": "https:\/\/github.com\/shahin0964\/Smart-Messages\/releases\/download\/v1.0.12\/SmartMessages-latest.apk",
+      "sizeBytes": 11114231,
+      "githubRepo": "shahin0964\/Smart-Messages",
       "changelog": [
         "Published via Nox Developer Studio"
       ],
